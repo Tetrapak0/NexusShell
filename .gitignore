@@ -1,0 +1,32 @@
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Executables
+*.exe
+*.out
+
+# Visual Studio Files
+.vs/
+*.user
+.vscode/
+
+# Misc. 
+Client/bin/
+
+Client-arm64/bin/
+
+Server/x64/
+Server/bin/
+
+Server-Linux/
+Server-Linux/bin/
