@@ -1,5 +1,5 @@
-#include "include/Header.h"
-#include "include/GUI.h"
+#include "../include/Header.h"
+#include "../include/GUI.h"
 
 int main(int, char**)
 {

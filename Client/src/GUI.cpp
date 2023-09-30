@@ -1,5 +1,5 @@
-#include "include/GUI.h"
-#include "include/Header.h"
+#include "../include/GUI.h"
+#include "../include/Header.h"
 
 bool done = false;
 bool failed_backup;
