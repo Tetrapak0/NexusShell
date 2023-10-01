@@ -20,10 +20,9 @@
 #define FTTYPES_H_
 
 
-#include <ft2build.h>
-#include FT_CONFIG_CONFIG_H
-#include <freetype/ftsystem.h>
-#include <freetype/ftimage.h>
+#include "config/ftconfig.h"
+#include "ftsystem.h"
+#include "ftimage.h"
 
 #include <stddef.h>
 
