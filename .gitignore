@@ -18,12 +18,11 @@
 # Visual Studio Files
 .vs/
 *.user
-.vscode/
 
 # Misc. 
-Client/bin/
+Client/build/
 
-Client-arm64/bin/
+Client-arm64/build/
 
 Server/x64/
 Server/bin/
