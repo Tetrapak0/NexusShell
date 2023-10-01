@@ -38,6 +38,7 @@
 #include "imgui_freetype.h"
 #include "../imgui_internal.h"     // ImMin,ImMax,ImFontAtlasBuild*,
 #include <stdint.h>
+#include "freetype/config/public-macros.h"
 #include "freetype/freetype.h"
 #include "freetype/ftmodapi.h"
 #include "freetype/ftglyph.h"
