@@ -20,9 +20,10 @@
 #define FREETYPE_H_
 
 
-#include "config/ftconfig.h"
-#include "fttypes.h"
-#include "fterrors.h"
+#include <ft2build.h>
+#include FT_CONFIG_CONFIG_H
+#include <freetype/fttypes.h>
+#include <freetype/fterrors.h>
 
 
 FT_BEGIN_HEADER

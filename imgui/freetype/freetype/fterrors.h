@@ -124,7 +124,7 @@
 
 
   /* include module base error codes */
-#include "ftmoderr.h"
+#include <freetype/ftmoderr.h>
 
 
   /*******************************************************************/
@@ -197,7 +197,7 @@
 
 
   /* now include the error codes */
-#include "fterrdef.h"
+#include <freetype/fterrdef.h>
 
 
 #ifdef FT_ERROR_END_LIST
