@@ -98,25 +98,17 @@ static void ImGui_ImplSDL3_SetClipboardText(void*, const char* text)
     SDL_SetClipboardText(text);
 }
 
-void ImGui_ImplSDL3_WaitForEvent()
-{
+void ImGui_ImplSDL3_WaitForEvent() {
     ImGui_ImplSDL3_Data* bd = ImGui_ImplSDL3_GetBackendData();
 
-    if (!(ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_EnablePowerSavingMode))
-        return;
+    if (!(ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_EnablePowerSavingMode)) return;
 
     Uint32 window_flags = SDL_GetWindowFlags(bd->Window);
     bool window_is_hidden = window_flags & (SDL_WINDOW_HIDDEN | SDL_WINDOW_MINIMIZED);
-    double waiting_time = window_is_hidden ? INFINITY : ImGui::GetEventWaitingTime();
-    if (waiting_time > 0.0)
-    {
-        if (isinf(waiting_time))
-            SDL_WaitEvent(NULL);
-        else
-        {
-            const int waiting_time_ms = (int)(1000.0 * ImGui::GetEventWaitingTime());
-            SDL_WaitEventTimeout(NULL, waiting_time_ms);
-        }
+    double waiting_time = window_is_hidden ? INFINITY : 0.5;
+    if (waiting_time > 0.0) {
+        if (isinf(waiting_time)) SDL_WaitEvent(NULL);
+        else SDL_WaitEventTimeout(NULL, 500);
     }
 }
 
