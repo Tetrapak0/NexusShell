@@ -465,19 +465,6 @@ bool ImGui_ImplSDL3_InitForVulkan(SDL_Window* window)
     return true;
 }
 
-bool ImGui_ImplSDL3_InitForD3D(SDL_Window* window)
-{
-#if !defined(_WIN32)
-    IM_ASSERT(0 && "Unsupported");
-#endif
-    return ImGui_ImplSDL3_Init(window, nullptr, nullptr);
-}
-
-bool ImGui_ImplSDL3_InitForMetal(SDL_Window* window)
-{
-    return ImGui_ImplSDL3_Init(window, nullptr, nullptr);
-}
-
 bool ImGui_ImplSDL3_InitForSDLRenderer(SDL_Window* window, SDL_Renderer* renderer)
 {
     return ImGui_ImplSDL3_Init(window, renderer, nullptr);
