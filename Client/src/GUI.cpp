@@ -5,7 +5,7 @@ bool done = false;
 bool failed_backup;
 bool run_setup;
 bool hide_failed;
-bool should_wait;
+
 int collumns;
 int rows;
 
@@ -36,13 +36,12 @@ int gui_init() {
     ImGui_ImplSDLRenderer3_Init(renderer);
 
     screens current_display = get_default_screen();
-    should_wait = false;
     hide_failed = true;
     run_setup = true;
     collumns = 6; // TODO: Get default layout
     rows     = 4; //
     do {
-        if (should_wait) ImGui_ImplSDL3_WaitForEvent();
+        //ImGui_ImplSDL3_WaitForEvent();
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             ImGui_ImplSDL3_ProcessEvent(&event);
@@ -54,8 +53,8 @@ int gui_init() {
         ImGui_ImplSDL3_NewFrame();
         ImGui::NewFrame();
 
-        if (run_setup)          draw_setup(); // TODO: Only run if no ip is stored in json
-        if (disconnected_modal) draw_disconnected_alert();
+        if (run_setup && !have_ip)                       draw_setup();
+        if (!connected && have_ip || disconnected_modal) draw_disconnected_alert();
 
         im_window_flags |= ImGuiWindowFlags_NoDecoration
                         |  ImGuiWindowFlags_NoScrollbar
@@ -63,10 +62,10 @@ int gui_init() {
                         |  ImGuiWindowFlags_NoResize
                         |  ImGuiWindowFlags_NoMove;
 
+        draw_main(current_display);
 #ifdef _DEBUG 
         draw_performance();
 #endif
-        draw_main(current_display);
 
         ImGui::Render();
         SDL_RenderClear(renderer);
@@ -128,7 +127,7 @@ ImGuiStyle& set_style(/*TODO: Add style parameters and default valurs*/) {
 
 void draw_main(screens current) { // TODO: Create window in main to display tabs, close button etc.
     ImGuiIO& io = ImGui::GetIO();
-    ImGui::Begin("main", NULL, im_window_flags);
+    ImGui::Begin("main", NULL, im_window_flags | ImGuiWindowFlags_NoBringToFrontOnFocus); // Allow performance info to always be on top
     ImGui::SetWindowSize(io.DisplaySize);
     ImGui::SetWindowPos(ImVec2(0.0f, 0.0f));
     switch(current) {
@@ -161,11 +160,10 @@ void draw_setup() {
     ImGuiIO&    io    = ImGui::GetIO();
     ImGuiStyle& style = ImGui::GetStyle();
     style.ItemSpacing = ImVec2(1.0f, 1.0f);
-    //ImGui::SetWindowFontScale(window_scale); // TODO: Implement this and freetype
     ImGui::OpenPopup("Setup", im_window_flags);
-    ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f), ImGuiCond_Always, ImVec2(0.5f,0.5f));
     if (ImGui::BeginPopupModal("Setup", NULL, im_window_flags)) {
         ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f), ImGuiCond_Always, ImVec2(0.5f,0.5f));
+        ImGui::SetWindowFontScale(2.0f);
         ImGui::BeginDisabled(failed == failed_backup);
         ImGui::Text("Welcome to ShortPad!");
         ImGui::Separator();
@@ -191,19 +189,28 @@ void draw_disconnected_alert() {
     ImGuiStyle& style = ImGui::GetStyle();
     style.ItemSpacing = ImVec2(1.0f, 1.0f);
     ImGui::OpenPopup("Disconnected", im_window_flags);
-    ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f), ImGuiCond_Always, ImVec2(0.5f,0.5f));
     if (ImGui::BeginPopupModal("Disconnected", NULL, im_window_flags)) {
         ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f), ImGuiCond_Always, ImVec2(0.5f,0.5f));
+        ImGui::SetWindowFontScale(2.0f);
+        failed = false;
         ImGui::Text("Disconnected.");
-        //ImGui::Text("Attempting to reconnect in: %ss.", seconds_to_reconnect); // TODO:
+        ImGui::Text("Attempting to reconnect to %s", ip_address);
+        if (ImGui::Button("Change IP address")) {
+            disconnected_modal  = false;
+            have_ip             = false;
+            failed              = true;
+            hide_failed         = true;
+            run_setup           = true;
+            remove_ipstore();
+        } 
         ImGui::EndPopup();
     }
 }
 
-// draw_performance definition
 #ifdef _DEBUG 
 bool show_demo_window = false;
 void draw_performance() {
+    ImGuiIO& io = ImGui::GetIO();
     ImGui::Begin("Performance Statistics", NULL, ImGuiWindowFlags_NoCollapse);
     ImGui::Checkbox("Demo  ", &show_demo_window);
     if (show_demo_window) ImGui::ShowDemoWindow(&show_demo_window);

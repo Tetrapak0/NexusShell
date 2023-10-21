@@ -21,7 +21,10 @@ ImGuiStyle& set_style();
 
 void draw_main(screens current);
 
+void countdown_reconnect();
+
 void draw_home();
+void draw_loading();
 void draw_setup();
 void draw_disconnected_alert();
 

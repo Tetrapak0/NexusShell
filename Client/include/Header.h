@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <thread>
+#include <chrono>
 #include <string>
 #include <vector>
 #include <filesystem>
@@ -17,7 +18,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include "../../json.hpp" // TODO: Do we need json?
+#include "../../json.hpp"
 
 using std::cout;
 using std::cin;
@@ -42,9 +43,9 @@ using json = nlohmann::json;
 extern bool failed;
 extern bool failed_backup;
 extern bool connected;
-extern bool disconnected_modal;
-extern bool should_wait;
 extern bool done;
+extern bool disconnected_modal;
+extern bool have_ip;
 
 extern int sock;
 extern int sendRes;
@@ -52,8 +53,11 @@ extern int sendRes;
 extern char ip_address[16];
 
 extern const string id_gen();
-extern const string rw_UUID_file();
+extern const string rw_UUID();
 
 extern int client_init();
 
+extern bool rw_ipstore();
+
+extern void remove_ipstore();
 extern void write_config(vector<string> args, int arg_size);

@@ -4,8 +4,9 @@ struct passwd* pw = getpwuid(getuid());
 struct timeval timeout;
 
 bool failed;
-bool connected;
-bool disconnected_modal;
+bool connected          = false;
+bool disconnected_modal = false;
+bool have_ip            = false;
 
 int sock;
 int bytesReceived;
@@ -15,42 +16,51 @@ char ip_address[16];
 char* homedir = pw->pw_dir;
 
 int client_init() {
-    const string pad_id = rw_UUID_file();
-    timeout.tv_sec  = 5;
-    timeout.tv_usec = 0;
+    const string pad_id = rw_UUID();
 
     sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock == -1) {done = true; return 1;}
-    if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout,  sizeof(timeout)) == -1) {done = true; return 1;}
-    if (setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout,  sizeof(timeout)) == -1) {done = true; return 1;}
+
+    timeout.tv_sec  = 5;
+    if ((setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout,  sizeof(timeout)) ||
+         setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout,  sizeof(timeout))  == -1)) {
+        done = true; cerr << "setsockopt failed\n"; return 1;
+    }
 
     failed             = true;
     connected          = false;
-    disconnected_modal = false;
 
     struct sockaddr_in hint;
     hint.sin_family = AF_INET;
     hint.sin_port = htons(27015);
+    have_ip = rw_ipstore();
     do {
-        if (!failed) { // TODO: auto connect
+        if (!failed) {
             inet_pton(AF_INET, ip_address, &hint.sin_addr);
             int connectRes = connect(sock, (struct sockaddr*)&hint, sizeof(hint));
             cerr << "connectRes: " << connectRes << "\n";
-            if (connectRes == -1) {failed = true;}
+            if (connectRes == -1) failed = true;
             else                  connected = true;
         }
     } while (!connected);
-    should_wait = true;
+
+    if (!have_ip) rw_ipstore();
+
+    timeout.tv_sec = 2147483647;
+    if ((setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout,  sizeof(timeout)) ||
+         setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout,  sizeof(timeout))  == -1)) {
+        cerr << "setsockopt failed\n"; done = true; return 1;
+    }
+
+    disconnected_modal = false;
     char buf[128];
     sendRes = send(sock, pad_id.c_str(), pad_id.size() + 1, 0);
     do {
         memset(buf, 0, 128);
         bytesReceived = recv(sock, buf, 128, 0);
-        should_wait = false;
         if (bytesReceived == -1) break;
-        else cout << string(buf, bytesReceived) << "\n";
-        should_wait = true;
-    } while (bytesReceived > 0 || sendRes > 0 || !done);
+        else cerr << string(buf, bytesReceived) << "\n";
+    } while (bytesReceived > 1 || sendRes > 0 || !done);
     close(sock);
     connected = false;
     disconnected_modal = true;
@@ -70,7 +80,7 @@ const string id_gen() {
     return to_string(distr(generator));
 }
 
-const string rw_UUID_file() {
+const string rw_UUID() {    // TODO: maybe change shp_dir to shp_config and append to it. -- avoid uuid_path var but move create_dir outside of first exists()
     string shp_dir(homedir);
     shp_dir += "/.config/ShortPad";
     string uuid_path = shp_dir + "/UUID";
@@ -88,11 +98,39 @@ const string rw_UUID_file() {
     }
 }
 
+bool rw_ipstore() {
+    string shp_config(homedir);
+    shp_config += "/.config/ShortPad";
+    if (!exists(shp_config)) create_directory(shp_config); // This is here if the end user decides to delete the config directory, while the program is running. The directory already gets created in the rw_UUID function
+    shp_config += "/ipstore";
+    if (exists(shp_config)) {
+        ifstream ip_reader(shp_config);
+        string read_ip((istreambuf_iterator<char>(ip_reader)),
+                               (istreambuf_iterator<char>()));
+        ip_reader.close();
+        if (!read_ip.empty()) {
+            strncpy(ip_address, read_ip.c_str(), read_ip.length());
+            failed = false;
+            return true;
+        }
+    }
+    ofstream ip_hoarder(shp_config);
+    ip_hoarder << ip_address;
+    ip_hoarder.close();
+    return false;
+}
+
+void remove_ipstore() {
+    string shp_config(homedir);
+    shp_config += "/.config/ShortPad/ipstore";
+    if (exists(shp_config)) std::filesystem::remove(shp_config);
+}
+
 void write_config(vector<string> args, int arg_size) {
-	string shp_dir(homedir);
-	shp_dir += "/.config/ShortPad";
-	if (!exists(shp_dir)) create_directory(shp_dir);
-	string shp_config = shp_dir + "/config.json";
+	string shp_config(homedir);
+	shp_config += "/.config/ShortPad";
+	if (!exists(shp_config)) create_directory(shp_config);
+	shp_config += "/config.json";
 	json to_write;
 	if (exists(shp_config)) {
 		ifstream parse_config(shp_config);
