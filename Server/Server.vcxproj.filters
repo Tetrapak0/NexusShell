@@ -57,9 +57,6 @@
     <ClCompile Include="..\NativeFileDIalogs-Extended\nfd_win.cpp">
       <Filter>External Sources\NativeFileDialogs</Filter>
     </ClCompile>
-    <ClCompile Include="..\imgui\freetype\imgui_freetype.cpp">
-      <Filter>External Sources\Dear ImGui</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\Header.h">

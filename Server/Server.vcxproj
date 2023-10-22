@@ -156,7 +156,6 @@
   <ItemGroup>
     <ClCompile Include="..\imgui\backends\imgui_impl_sdl3.cpp" />
     <ClCompile Include="..\imgui\backends\imgui_impl_sdlrenderer3.cpp" />
-    <ClCompile Include="..\imgui\freetype\imgui_freetype.cpp" />
     <ClCompile Include="..\imgui\imgui.cpp" />
     <ClCompile Include="..\imgui\imgui_demo.cpp" />
     <ClCompile Include="..\imgui\imgui_draw.cpp" />
