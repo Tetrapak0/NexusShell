@@ -19,9 +19,7 @@
 #ifndef FTOPTION_H_
 #define FTOPTION_H_
 
-
-#include "../ft2build.h"
-
+#include "public-macros.h"
 
 FT_BEGIN_HEADER
 

@@ -323,7 +323,7 @@ void ImGui::ShowDemoWindow(bool* p_open)
     static bool no_nav = false;
     static bool no_background = false;
     static bool no_bring_to_front = false;
-    static bool no_docking = false;
+    static bool no_docking = true;
     static bool unsaved_document = false;
 
     ImGuiWindowFlags window_flags = 0;

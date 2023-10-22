@@ -57,6 +57,7 @@ int gui_init() {
         if (!connected && have_ip || disconnected_modal) draw_disconnected_alert();
 
         im_window_flags |= ImGuiWindowFlags_NoDecoration
+                        |  ImGuiWindowFlags_NoDocking
                         |  ImGuiWindowFlags_NoScrollbar
                         |  ImGuiWindowFlags_AlwaysAutoResize
                         |  ImGuiWindowFlags_NoResize
@@ -211,7 +212,8 @@ void draw_disconnected_alert() {
 bool show_demo_window = false;
 void draw_performance() {
     ImGuiIO& io = ImGui::GetIO();
-    ImGui::Begin("Performance Statistics", NULL, ImGuiWindowFlags_NoCollapse);
+    ImGui::Begin("Performance Statistics", NULL, ImGuiWindowFlags_NoCollapse | 
+                                                 ImGuiWindowFlags_NoDocking );
     ImGui::Checkbox("Demo  ", &show_demo_window);
     if (show_demo_window) ImGui::ShowDemoWindow(&show_demo_window);
     ImGui::SameLine();
