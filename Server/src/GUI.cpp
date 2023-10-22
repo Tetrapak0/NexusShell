@@ -2,21 +2,19 @@
 #include "../include/Header.h"
 
 bool done = false;
-bool write = true;
-bool should_wait = false;
 ImGuiWindowFlags im_window_flags = 0;
 
 // NOTE: folder structure, shortcut using folder class containing shortcut vector that uses shortcut/folder class
 
-int gui_init()
-{
+int gui_init() {
 	SDL_Init(SDL_INIT_VIDEO);
-	SDL_SetHint(SDL_HINT_IME_SHOW_UI, "1");	// Enable native IME (Input Method Engine)
+	SDL_SetHint(SDL_HINT_IME_SHOW_UI, "1");
 	SDL_Window* window = SDL_CreateWindow("ShortPad", 1280, 720, SDL_WINDOW_OPENGL    |
 																 SDL_WINDOW_RESIZABLE |
 																 SDL_WINDOW_HIDDEN   );
-	SDL_Renderer* renderer = SDL_CreateRenderer(window, NULL, SDL_RENDERER_PRESENTVSYNC | 
-															  SDL_RENDERER_ACCELERATED );
+	if (window == nullptr) SDL_ERROR("window")
+	SDL_Renderer* renderer = SDL_CreateRenderer(window, NULL, SDL_RENDERER_PRESENTVSYNC);
+	if (renderer == nullptr) SDL_ERROR("renderer")
 	SDL_ShowWindow(window);
 
 	IMGUI_CHECKVERSION();
@@ -34,7 +32,7 @@ int gui_init()
 	ImGui_ImplSDLRenderer3_Init(renderer);
 
 	do {
-		if (should_wait) ImGui_ImplSDL3_WaitForEvent();
+		ImGui_ImplSDL3_WaitForEvent();
 		SDL_Event event;
 		while (SDL_PollEvent(&event)) {
 			ImGui_ImplSDL3_ProcessEvent(&event);
@@ -72,7 +70,7 @@ int gui_init()
 	return 0;
 }
 
-void prepare_json()	 {
+void prepare_json()	{
 	//vector<string> params = {id, "shortcuts",  "1", "type", "program" }; // TODO: switch to enums / TODO: for loop this and write
 	//TODO decide what shold be written here
 	//write_config(params, params.size()); // FIXME: Writes twice??
@@ -138,30 +136,27 @@ void draw_main() {
 	/*
 	NFD_Init();
 
-    nfdchar_t *outPath;
-    nfdfilteritem_t filterItem[2] = {{"Source code", "c,cpp,cc"}, {"Headers", "h,hpp"}};
-    nfdresult_t result = NFD_OpenDialog(&outPath, filterItem, 2, NULL);
-    if (result == NFD_OKAY) {
-        puts("Success!");
-        puts(outPath);
-        NFD_FreePath(outPath);
-    } else if (result == NFD_CANCEL) puts("User pressed cancel.");
-    else printf("Error: %s\n", NFD_GetError());
+	nfdchar_t *outPath;
+	nfdfilteritem_t filterItem[2] = {{"Source code", "c,cpp,cc"}, {"Headers", "h,hpp"}};
+	nfdresult_t result = NFD_OpenDialog(&outPath, filterItem, 2, NULL);
+	if (result == NFD_OKAY) {
+		puts("Success!");
+		puts(outPath);
+		NFD_FreePath(outPath);
+	} else if (result == NFD_CANCEL) puts("User pressed cancel.");
+	else printf("Error: %s\n", NFD_GetError());
 
-    NFD_Quit();
+	NFD_Quit();
 	*/
 	
 	ImGuiIO& io = ImGui::GetIO();
 	ImGui::Begin("main", NULL, im_window_flags);
 	ImGui::Columns();
 	ImGui::Text("Connected Devices:");
-	cerr << "empty: " <<ids.empty() << "\n" << "size: " << ids.size() << "\n";
 	if (!ids.empty()) {
-		cerr << "1\n";
-		for (int i = 0; i <= ids.size(); i++) {
-			cerr << "2\n";
+		for (int i = 0; i <= ids.size() -1; i++) {
 			if (ImGui::Button((ids[i].ID).c_str())) {
-				cerr << "3\n";
+
 			}
 		}
 	} else ImGui::Text("None");
@@ -171,7 +166,6 @@ void draw_main() {
 	ImGui::End();
 }
 
-// draw_performance() definition
 #ifdef _DEBUG 
 bool show_demo_window = false;
 void draw_performance() {

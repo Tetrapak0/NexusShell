@@ -8,23 +8,22 @@
 #define SHORTCUT_PREFIX "SH"
 
 #include <iostream>
+#include <thread>
 #include <string>
 #include <vector>
-#include <thread>
 #include <filesystem>
-#include <iomanip>
 #include <fstream>
+#include <iomanip>
 #include <Windows.h>
 #include <WinUser.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
-#include "../../json.hpp" // NOTE: Do we need json?
+#include "../../json.hpp"
 
 #pragma comment(lib, "Ws2_32.lib")
 #pragma comment(lib, "user32.lib")
 
-using std::cout;
 using std::cin;
 using std::cerr;
 

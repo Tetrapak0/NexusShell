@@ -1,10 +1,16 @@
 #include "../include/Header.h"
 #include "../include/GUI.h"
 
-int main(int, char**) {
+#ifdef _DEBUG
+int main(int argc, char** argv) {
+#else
+INT WINAPI wWinMain(_In_	 HINSTANCE hInstance,
+				    _In_opt_ HINSTANCE hPrevInstance,	
+				    _In_	 PWSTR	   pCmdLine,
+				    _In_	 INT	   nCmdShow) {
+#endif
 	thread gui_handler(gui_init);
 	server_init();
-	cerr << "joining\n";
 	gui_handler.join();
 	return 0;
 }

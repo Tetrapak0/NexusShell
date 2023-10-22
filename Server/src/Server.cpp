@@ -23,7 +23,15 @@ int server_init() {
 	// TODO: create separate thread for each connection
 	//		 id[i].connected;
 	connected_devices++;
-	if (setup_sock(iResult, wsaData, ListenSocket, ClientSocket, hints, result)) return 1;
+	if (setup_sock(iResult, wsaData, ListenSocket, ClientSocket, hints, result)) {done = true; return 1;}
+	ClientSocket = INVALID_SOCKET;
+	ClientSocket = accept(ListenSocket, NULL, NULL);
+	if (ClientSocket == INVALID_SOCKET) {
+		closesocket(ListenSocket);
+		WSACleanup();
+		return 1;
+	}
+
 	bool restart = false;
 	thread pager(ping, restart, iSendResult, iResult, ClientSocket);
 	int recvbuflen = 128;
@@ -36,29 +44,29 @@ int server_init() {
 			message = recvbuf;
 			cerr << "Message: " << message << "\n";
 			parse_command(message);
-			// TODO: add set_screen() function to change "working directory"
-			try {
-				if (message.length() != ID_LENGTH) throw; // Not a pad ID
-				int convert_id = std::stoi(message);
-				stringstream convert_back;
-				string check_id;
-				convert_back << convert_id;
-				convert_back >> check_id;
-				if ((check_id.length() == ID_LENGTH) &&
-					!(std::find(ids.begin(), ids.end(), id(message)) != ids.end())) {
-					ids.push_back(id(message));
-				}
-			} catch (...) {}
+			if (message.length() == ID_LENGTH) {
+				try {
+					unsigned long long convert_id = std::stoull(message);
+					stringstream convert_back;
+					string check_id;
+					convert_back << convert_id;
+					convert_back >> check_id;
+					id ID(message);
+					cerr << ID.ID << "\n";
+					if ((check_id.length() == ID_LENGTH) &&
+						!(std::find(ids.begin(), ids.end(), ID.ID) != ids.end())) {
+						ids.push_back(ID);
+					}
+				} catch (...) {}
+			}
 			iSendResult = send(ClientSocket, recvbuf, iResult, 0);
 			if (iSendResult == SOCKET_ERROR) break;
 			else cerr << "Bytes sent: " << iSendResult << "\n";
 		}
 	} while (iResult > 0 || iSendResult > 0 || !done);
-	cerr << "Shutting down\n";
 	iResult = shutdown(ClientSocket, SD_SEND);
 	closesocket(ClientSocket);
 	WSACleanup();
-	cerr << "Shut down\n";
 	connected_devices = 0;
 	ids.clear();
 	cerr << "------------REBOOTING SOCK------------\n";
@@ -68,7 +76,7 @@ int server_init() {
 	return 0;
 }
 
-void ping(bool restart, int iSendResult, int iResult, SOCKET ClientSocket) {
+void ping(bool restart, int iSendResult, int iResult, SOCKET ClientSocket) { // FIXME: Doesnt do shit
 	do {
 		Sleep(5000);
 		iSendResult = send(ClientSocket, "ping", iResult, 0);
@@ -77,34 +85,21 @@ void ping(bool restart, int iSendResult, int iResult, SOCKET ClientSocket) {
 
 vector<string> actions = { "code", "explorer", "explorer https://github.com/Tetrapak0"};  // WTF: stop hardcoding
 void parse_command(string message) {
-	if (message.substr(0, 2) == SHORTCUT_PREFIX) { // TODO: swtich case
+	if (message.substr(0, 2) == SHORTCUT_PREFIX) {
 		string act_pos = message.substr(2, message.length());
-		int pos = std::stoi(act_pos);		// Not try,catching this, because it won't break from intended use
-		cerr << actions.size() << "\n";
-		cerr << pos << "\n";
-		if (actions.size() >= pos)
-			system(actions[(pos - 1)].c_str()); // FIXME: crash??
-		else {
-			cerr << "No action at index " << pos << "\n";
+		int pos = std::stoi(act_pos);		// Unsafe? yes. Do I care? no, should be fine.
+		if (actions.size() >= pos) {
+			pos--;
+			system(actions[pos].c_str());
+		} else {
+			cerr << "No action at index " << pos << ". Starting explorer.\n";
 			system("explorer");
 		}
-		return;
 	}
-	/*
-	for ( int fooInt = One; fooInt != Last; fooInt++ )
-	{
-	   Foo foo = static_cast<Foo>(fooInt);
-	   switch(message.compare(foo))
-	   {
-			case 1:
-			case 0:
-			case -1:
-	   }
-	}
-	*/
+	// TODO: add set_screen() function to change "working directory"
 }
 
-int setup_sock(int& iResult, 
+int setup_sock(int& iResult,
 			   WSADATA& wsaData,
 			   SOCKET& ListenSocket,
 			   SOCKET& ClientSocket,
@@ -141,24 +136,16 @@ int setup_sock(int& iResult,
 		WSACleanup();
 		return 1;
 	}
-	ClientSocket = INVALID_SOCKET;
-	ClientSocket = accept(ListenSocket, NULL, NULL);
-	if (ClientSocket == INVALID_SOCKET) {
-		closesocket(ListenSocket);
-		WSACleanup();
-		return 1;
-	}
 	// TODO: Close socket on accept and create a new server_init thread
-	// make sure to join them afterwards
+	//		 make sure to join them afterwards
 	return 0;
 }
 
 void write_config(vector<string> args, int arg_size) {
-	char* homedir = getenv("USERPROFILE");
-	string shp_dir(homedir);
-	shp_dir += "\\AppData\\Roaming\\ShortPad";
-	if (!exists(shp_dir)) create_directory(shp_dir);
-	string shp_config = shp_dir + "\\config.json";
+	string shp_config(getenv("USERPROFILE"));
+	shp_config += "\\AppData\\Roaming\\ShortPad";
+	if (!exists(shp_config)) create_directory(shp_config);
+	shp_config += "\\config.json";
 	json to_write;
 	if (exists(shp_config)) {
 		ifstream parse_config(shp_config);
