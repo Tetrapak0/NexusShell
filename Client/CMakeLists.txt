@@ -32,3 +32,12 @@ endif()
 if(CMAKE_BUILD_TYPE MATCHES Debug)
 	target_compile_definitions(ShortPad PRIVATE _DEBUG)
 endif()
+
+#${CMAKE_CURRENT_SOURCE_DIR}/../imgui/freetype/imgui_freetype.cpp)					# FreeType stuff. Not yet tested
+#
+#z
+#png
+#brotlicommon
+#brotlienc
+#brotlidec
+#${CMAKE_CURRENT_SOURCE_DIR}/../imgui/lib/FreeType/libfreetype-aarch64.a)
