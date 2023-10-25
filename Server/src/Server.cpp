@@ -123,9 +123,8 @@ int setup_sock(int& iResult,
 	}
 	iResult = bind(ListenSocket, result->ai_addr, (int)result->ai_addrlen);
 	if (iResult == SOCKET_ERROR) {
-		HWND handle;
-		handle = FindWindowA(NULL, "ShortPad");
-		ShowWindow(handle, SW_NORMAL);
+		ShowWindow(FindWindow(NULL, L"ShortPad"), SW_NORMAL);
+		SetFocus(FindWindow(NULL, L"ShortPad"));
 		freeaddrinfo(result);
 		closesocket(ListenSocket);
 		WSACleanup();

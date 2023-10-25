@@ -162,6 +162,18 @@
     <ClCompile Include="..\imgui\imgui_tables.cpp" />
     <ClCompile Include="..\imgui\imgui_widgets.cpp" />
     <ClCompile Include="..\NativeFileDIalogs-Extended\nfd_win.cpp" />
+    <ClCompile Include="..\traypp\src\components\button.cpp" />
+    <ClCompile Include="..\traypp\src\components\imagebutton.cpp" />
+    <ClCompile Include="..\traypp\src\components\label.cpp" />
+    <ClCompile Include="..\traypp\src\components\separator.cpp" />
+    <ClCompile Include="..\traypp\src\components\submenu.cpp" />
+    <ClCompile Include="..\traypp\src\components\syncedtoggle.cpp" />
+    <ClCompile Include="..\traypp\src\components\toggle.cpp" />
+    <ClCompile Include="..\traypp\src\core\entry.cpp" />
+    <ClCompile Include="..\traypp\src\core\traybase.cpp" />
+    <ClCompile Include="..\traypp\src\core\windows\icon.cpp" />
+    <ClCompile Include="..\traypp\src\core\windows\image.cpp" />
+    <ClCompile Include="..\traypp\src\core\windows\tray.cpp" />
     <ClCompile Include="src\GUI.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\Server.cpp" />
@@ -174,8 +186,29 @@
     <ClInclude Include="..\imgui\imgui_internal.h" />
     <ClInclude Include="..\NativeFileDIalogs-Extended\include\nfd.h" />
     <ClInclude Include="..\NativeFileDIalogs-Extended\include\nfd.hpp" />
+    <ClInclude Include="..\traypp\include\components\button.hpp" />
+    <ClInclude Include="..\traypp\include\components\imagebutton.hpp" />
+    <ClInclude Include="..\traypp\include\components\label.hpp" />
+    <ClInclude Include="..\traypp\include\components\separator.hpp" />
+    <ClInclude Include="..\traypp\include\components\submenu.hpp" />
+    <ClInclude Include="..\traypp\include\components\syncedtoggle.hpp" />
+    <ClInclude Include="..\traypp\include\components\toggle.hpp" />
+    <ClInclude Include="..\traypp\include\core\entry.hpp" />
+    <ClInclude Include="..\traypp\include\core\icon.hpp" />
+    <ClInclude Include="..\traypp\include\core\image.hpp" />
+    <ClInclude Include="..\traypp\include\core\traybase.hpp" />
+    <ClInclude Include="..\traypp\include\core\windows\tray.hpp" />
+    <ClInclude Include="..\traypp\include\tray.hpp" />
     <ClInclude Include="include\GUI.h" />
     <ClInclude Include="include\Header.h" />
+    <ClInclude Include="resource.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="..\icon.ico" />
+    <Image Include="..\icon.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Server.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

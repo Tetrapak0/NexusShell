@@ -1,5 +1,9 @@
 #pragma once
 
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+
 #pragma comment(lib, "winmm.lib")
 #pragma comment(lib, "version.lib")
 #pragma comment(lib, "Imm32.lib")
@@ -13,6 +17,9 @@
 #include "../../imgui/backends/imgui_impl_SDL3.h"
 #include "../../imgui/backends/imgui_impl_sdlrenderer3.h"
 #include "../../imgui/backends/SDL3/SDL.h"
+
+#include "../../NativeFileDIalogs-Extended/include/nfd.hpp"
+#include "../../traypp/include/tray.hpp"
 
 #define SDL_ERROR(fail_point) {												\
 	string what_error(fail_point);											\
@@ -36,14 +43,14 @@
 	done = true;															\
 	exit(-1);																\
 }
+extern int gui_init();
+extern int tray_init();
 
-int gui_init();
-
-void draw_main();
+extern void draw_main();
 
 ImVec4*		set_colors();
 ImGuiStyle& set_style();
 
 #ifdef _DEBUG
-void draw_performance();
+extern void draw_performance();
 #endif

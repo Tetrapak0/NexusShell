@@ -10,7 +10,8 @@ INT WINAPI wWinMain(_In_	 HINSTANCE hInstance,
 				    _In_	 INT	   nCmdShow) {
 #endif
 	thread gui_handler(gui_init);
+	thread tray_handler(tray_init);
 	server_init();
-	gui_handler.join();
+	exit(0);
 	return 0;
 }

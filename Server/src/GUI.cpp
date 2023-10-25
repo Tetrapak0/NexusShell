@@ -1,10 +1,24 @@
 #include "../include/GUI.h"
 #include "../include/Header.h"
+#include "../include/Helvetica.h"
+#include "../include/Roboto.h"
+#include "../include/JUST_Sans.h"
+#include "../include/Verdana.h"
 
-bool done = false;
+bool done		   		    = false;
+bool should_draw_properties = false;
+
+int columns;
+int columns_prev;
+int rows;
+int rows_prev;
+int properties_to_draw;
+int selected_id = -1;
+
 ImGuiWindowFlags im_window_flags = 0;
 
 // NOTE: folder structure, shortcut using folder class containing shortcut vector that uses shortcut/folder class
+
 
 int gui_init() {
 	SDL_Init(SDL_INIT_VIDEO);
@@ -31,6 +45,14 @@ int gui_init() {
 	ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
 	ImGui_ImplSDLRenderer3_Init(renderer);
 
+	NFD_Init();
+	nfdchar_t* outPath;
+	nfdfilteritem_t filterItem = {"All Files", "*"};
+	//nfdresult_t result = NFD_OpenDialog(&outPath, filterItem, 2, NULL);
+
+	rows	 = 4;
+	columns	 = 6;
+
 	do {
 		ImGui_ImplSDL3_WaitForEvent();
 		SDL_Event event;
@@ -47,9 +69,10 @@ int gui_init() {
 		ImGui::NewFrame();
 
 		im_window_flags |= ImGuiWindowFlags_NoDecoration
-						| ImGuiWindowFlags_AlwaysAutoResize
-						| ImGuiWindowFlags_NoResize
-						| ImGuiWindowFlags_NoMove;
+						|  ImGuiWindowFlags_NoBringToFrontOnFocus
+						|  ImGuiWindowFlags_AlwaysAutoResize
+						|  ImGuiWindowFlags_NoResize
+						|  ImGuiWindowFlags_NoMove;
 
 		draw_main();
 #ifdef _DEBUG
@@ -61,6 +84,7 @@ int gui_init() {
 		ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData());
 		SDL_RenderPresent(renderer);
 	} while (!done);
+	NFD_Quit();
 	ImGui_ImplSDLRenderer3_Shutdown();
 	ImGui_ImplSDL3_Shutdown();
 	ImGui::DestroyContext();
@@ -132,45 +156,93 @@ ImGuiStyle& set_style(/*TODO: Add style parameters and default valurs*/) {
 	return style;
 }
 
+int tray_init() {
+#ifdef _WIN32
+	Tray::Tray tray("ShortPad", "..\\..\\icon.ico");
+#else 
+	Tray::Tray tray("ShortPad", "../../icon.ico");
+#endif
+	tray.addEntry(Tray::Button("Show Window\0", [&] { ShowWindow(FindWindow(NULL, L"ShortPad"), SW_NORMAL);
+													  SetFocus(FindWindow(NULL, L"ShortPad")); }));
+	tray.addEntry(Tray::Separator());
+	tray.addEntry(Tray::Button("Exit\0", [&] {done = true; exit(0); }));
+	tray.run();
+	return 0;
+}
+
+void draw_properties(int button) {
+	ImGui::OpenPopup("Properties");
+	const char* types[] = {"File", "URL", "Command"};
+	int selected_type = 0;
+	const char* previous_value = types[selected_type];
+	if (ImGui::BeginPopupModal("Properties", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
+		ImGui::SetWindowSize(ImVec2(300, 150));
+		ImGui::Text("Type"); ImGui::SameLine();
+		if (ImGui::BeginCombo("##Type", previous_value)) {
+			for (int i = 0; i < IM_ARRAYSIZE(types); i++) {
+				const bool is_selected = (selected_type == i);
+				if (ImGui::Selectable(types[i], is_selected)) selected_type = i;
+				if (is_selected) ImGui::SetItemDefaultFocus();
+			}
+			ImGui::EndCombo();
+		}
+ 		if (ImGui::Button("OK")) should_draw_properties = false;
+		ImGui::SameLine();
+		if (ImGui::Button("Cancel")) should_draw_properties = false;
+		ImGui::EndPopup();
+	}
+}
+
+void draw_editor() {
+	ImGuiIO& io = ImGui::GetIO();
+	float x_size = io.DisplaySize.x - 185;
+	ImGui::Begin("editor", NULL, im_window_flags);
+	ImGui::SetWindowSize(ImVec2(x_size, io.DisplaySize.y));
+	ImGui::SetWindowPos(ImVec2(186.0f, 0.0f));
+	ImGui::BeginDisabled(selected_id == -1);
+	for (int i = 1; i <= (columns * rows); i++) {
+		if (ImGui::Button((std::to_string(i)).c_str(), ImVec2(x_size / columns, io.DisplaySize.y / rows))) {
+			draw_properties(i);
+			should_draw_properties = true;
+			properties_to_draw	   = i;
+		}
+		if (i % columns != 0) ImGui::SameLine();
+	}
+	ImGui::EndDisabled();
+	if (should_draw_properties) draw_properties(properties_to_draw);
+	ImGui::End();
+}
+
 void draw_main() {
 	/*
-	NFD_Init();
-
-	nfdchar_t *outPath;
-	nfdfilteritem_t filterItem[2] = {{"Source code", "c,cpp,cc"}, {"Headers", "h,hpp"}};
 	nfdresult_t result = NFD_OpenDialog(&outPath, filterItem, 2, NULL);
 	if (result == NFD_OKAY) {
-		puts("Success!");
-		puts(outPath);
 		NFD_FreePath(outPath);
 	} else if (result == NFD_CANCEL) puts("User pressed cancel.");
 	else printf("Error: %s\n", NFD_GetError());
-
-	NFD_Quit();
 	*/
-	
 	ImGuiIO& io = ImGui::GetIO();
-	ImGui::Begin("main", NULL, im_window_flags);
-	ImGui::Columns();
-	ImGui::Text("Connected Devices:");
+	ImGui::Begin("devicelist", NULL, im_window_flags);
+	ImGui::SetWindowSize(ImVec2(185, io.DisplaySize.y));
+	ImGui::SetWindowPos(ImVec2(0.0f, 0.0f));
+	ImGui::Text("Connected Devices:\n");
 	if (!ids.empty()) {
-		for (int i = 0; i <= ids.size() -1; i++) {
-			if (ImGui::Button((ids[i].ID).c_str())) {
-
+		for (int i = 0; i <= ids.size() - 1; i++) {
+			if (ImGui::Selectable((ids[i].ID).c_str(), selected_id == i)) {
+				selected_id = i;
 			}
 		}
 	} else ImGui::Text("None");
-	ImGui::NextColumn();
-	ImGui::SetWindowSize(io.DisplaySize);
-	ImGui::SetWindowPos(ImVec2(0.0f, 0.0f));
 	ImGui::End();
+	draw_editor();
 }
 
 #ifdef _DEBUG 
 bool show_demo_window = false;
 void draw_performance() {
 	ImGuiIO& io = ImGui::GetIO();
-	ImGui::Begin("Performance Statistics", NULL);
+	ImGui::Begin("Performance Statistics", NULL, ImGuiWindowFlags_NoCollapse | 
+												 ImGuiWindowFlags_NoDocking);
 	ImGui::Checkbox("Demo  ", &show_demo_window);
 	if (show_demo_window) ImGui::ShowDemoWindow(&show_demo_window);
 	ImGui::SameLine();
