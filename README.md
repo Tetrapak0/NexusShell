@@ -1,6 +1,6 @@
-# ShortPad
+# NexusShell
 <p align="center">
-  <img src="https://github.com/Tetrapak0/ShortPad/icon.png?raw=true" alt="Icon"/>
+  <img src="https://github.com/Tetrapak0/NexusShell/icon.png?raw=true" alt="Icon"/>
 </p>
 
 ## Index:
@@ -27,7 +27,7 @@ There may be other software alternatives to the Elgato Stream Deck and similar p
 ### Low Priority:
 - Code cleanup
 ## Acquisition:
-- [Releases](https://github.com/Tetrapak0/ShortPad/releases) (Executable is staticaly linked and portable)
+- [Releases](https://github.com/Tetrapak0/NexusShell/releases) (Executable is staticaly linked and portable)
 - [Build](#build)
 ## Build:
 ### **If you wish to compile for aarch64, you must build your own SDL3 library for it with an aarch64 OpenGL3 library. Neither are provided, as I have no access to OpenGL3 for aarch64.**
@@ -41,7 +41,7 @@ The client only supports Linux.
 - Debian & based: `sudo apt update && sudo apt install git`
 - Fedora: `sudo dnf upgrade --refresh && sudo dnf install git`
 ##### 1.2 Clone
-`git clone https://github.com/Tetrapak0/ShortPad`
+`git clone https://github.com/Tetrapak0/NexusShell`
 #### 2. Install CMake
 - Arch & based: `sudo pacman -Syu cmake`
 - Debian & based: `sudo apt update && sudo apt install cmake`
@@ -49,7 +49,7 @@ The client only supports Linux.
 #### 3. Configure CMake
 ##### 3.1 Build directory
 ```shell
-cd ShortPad/Client
+cd NexusShell/Client
 mkdir build
 ```
 #
@@ -73,5 +73,5 @@ cmake --build . --config Release
 ```
 #### 5. Run
 ```shell
-./ShortPad
+./NexusShell
 ```

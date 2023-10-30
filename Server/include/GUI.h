@@ -11,15 +11,18 @@
 #pragma comment(lib, "libcmt.lib")
 
 #pragma comment(lib, "../lib/SDL3/SDL3.lib")
-//#pragma comment(lib, "../imgui/lib/FreeType/freetype.lib")
+#pragma comment(lib, "../lib/FreeType/freetype.lib")
 
 #include "../../imgui/imgui.h"
+#include "../../imgui/imgui_stdlib.h"
 #include "../../imgui/backends/imgui_impl_SDL3.h"
 #include "../../imgui/backends/imgui_impl_sdlrenderer3.h"
 #include "../../imgui/backends/SDL3/SDL.h"
 
 #include "../../NativeFileDIalogs-Extended/include/nfd.hpp"
 #include "../../traypp/include/tray.hpp"
+
+#include "../../Helvetica.h"
 
 #define SDL_ERROR(fail_point) {												\
 	string what_error(fail_point);											\
@@ -43,6 +46,7 @@
 	done = true;															\
 	exit(-1);																\
 }
+
 extern int gui_init();
 extern int tray_init();
 

@@ -117,6 +117,9 @@
     <ClCompile Include="..\imgui\imgui_stdlib.cpp">
       <Filter>External Sources\Dear ImGui</Filter>
     </ClCompile>
+    <ClCompile Include="..\imgui\imgui_freetype.cpp">
+      <Filter>External Sources\Dear ImGui</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\Header.h">
@@ -190,6 +193,9 @@
     </ClInclude>
     <ClInclude Include="..\NativeFileDIalogs-Extended\include\nfd.h">
       <Filter>External Sources\NativeFileDialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="..\imgui\imgui_freetype.h">
+      <Filter>External Sources\Dear ImGui</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
