@@ -20,24 +20,28 @@ add_executable(ShortPad ${ShPSource}
 						${CMAKE_CURRENT_SOURCE_DIR}/../imgui/imgui_widgets.cpp
 						${CMAKE_CURRENT_SOURCE_DIR}/../imgui/imgui.cpp
 						${CMAKE_CURRENT_SOURCE_DIR}/../imgui/backends/imgui_impl_sdl3.cpp 
-						${CMAKE_CURRENT_SOURCE_DIR}/../imgui/backends/imgui_impl_sdlrenderer3.cpp )
+						${CMAKE_CURRENT_SOURCE_DIR}/../imgui/backends/imgui_impl_sdlrenderer3.cpp 
+						${CMAKE_CURRENT_SOURCE_DIR}/../imgui/imgui_freetype.cpp)
 
 if((CMAKE_HOST_SYSTEM_PROCESSOR MATCHES aarch64 OR CMAKE_HOST_SYSTEM_PROCESSOR MATCHES armv8l) OR 
 	(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES x86_64 AND DEFINED CROSS_COMPILE))
-	target_link_libraries(ShortPad PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../lib/SDL3/libSDL3-aarch64.a )
+	target_link_libraries(ShortPad PRIVATE z
+										   png
+										   brotlicommon
+										   brotlienc
+										   brotlidec
+										   ${CMAKE_CURRENT_SOURCE_DIR}/../lib/FreeType/libfreetype-aarch64.a
+										   ${CMAKE_CURRENT_SOURCE_DIR}/../lib/SDL3/libSDL3-aarch64.a )
 else()
-	target_link_libraries(ShortPad PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../lib/SDL3/libSDL3.a )
+	target_link_libraries(ShortPad PRIVATE z
+										   png
+										   brotlicommon
+										   brotlienc
+										   brotlidec
+										   ${CMAKE_CURRENT_SOURCE_DIR}/../lib/FreeType/libfreetype.a					  
+										   ${CMAKE_CURRENT_SOURCE_DIR}/../lib/SDL3/libSDL3.a )
 endif()
 
 if(CMAKE_BUILD_TYPE MATCHES Debug)
 	target_compile_definitions(ShortPad PRIVATE _DEBUG)
 endif()
-
-#${CMAKE_CURRENT_SOURCE_DIR}/../imgui/freetype/imgui_freetype.cpp)					# FreeType stuff. Not yet tested
-#
-#z
-#png
-#brotlicommon
-#brotlienc
-#brotlidec
-#${CMAKE_CURRENT_SOURCE_DIR}/../imgui/lib/FreeType/libfreetype-aarch64.a)
