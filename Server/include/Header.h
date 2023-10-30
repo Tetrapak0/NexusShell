@@ -7,6 +7,9 @@
 #define ID_LENGTH 18
 #define SHORTCUT_PREFIX "SH"
 
+#define CURRENT_ID_AND_BUTTON ids[selected_id].profiles[0].buttons[index] // TODO: Change this to actual profile and page
+#define CURRENT_ID			  ids[selected_id]
+
 #include <iostream>
 #include <thread>
 #include <string>
@@ -35,18 +38,39 @@ using std::ifstream;
 using std::stringstream;
 using std::istreambuf_iterator;
 
+using std::to_string;
 using std::filesystem::exists;
 using std::filesystem::create_directory;
 
-using json = nlohmann::json;
+using json = nlohmann::ordered_json;
 
 extern bool done;
+extern bool send_config;
 
 extern int connected_devices;
+
+class button {
+public:
+	string label = "";
+	string label_backup = label;
+	bool   default_label = true;
+	enum   types {File, URL, Command,};
+	types  type = File;
+	string action;
+};
+
+class profile {
+public: 
+	int	   columns		   = 6;
+	int	   rows			   = 4;
+	int	   current_page    = 0;
+	vector<button> buttons;
+};
 
 class id {
 public:
 	string ID;
+	vector<profile> profiles;
 	id(string in_ID);
 	bool operator==(const id& other) const;
 };
@@ -61,7 +85,7 @@ extern int setup_sock(int& iResult,
 					  SOCKET& ClientSocket,
 					  struct addrinfo hints,
 					  struct addrinfo* result);
-extern void ping(bool restart, int iSendResult, int iResult, SOCKET ClientSocket);
-extern void parse_command(string message);
+
+extern void configure_id(id* id);
+extern void parse_message(string message);
 extern void write_config(vector<string> args, int arg_size);
-extern void prepare_json();

@@ -1,4 +1,5 @@
 # ShortPad
+<<<<<<< Updated upstream
 
 ## Index:
 - [Why](#why)
@@ -12,6 +13,12 @@
         - [Configure CMake](#3-configure-cmake)
             - [Cross-Compiling](#32-cross-compiling-for-arm)
             - [For current platform](#33-for-current-platform)
+=======
+<p align="center">
+  <img src="https://github.com/Tetrapak0/ShortPad/icon.png?raw=true" alt="Icon"/>
+</p>
+
+>>>>>>> Stashed changes
 ### Why?
 There may be other software alternatives to the Elgato Stream Deck and similar products, but none of them provide the same functionality as ShortPad will before exiting beta.
 ## Help Wanted:
@@ -27,6 +34,7 @@ There may be other software alternatives to the Elgato Stream Deck and similar p
 - [Releases](https://github.com/Tetrapak0/ShortPad/releases) (Executable is staticaly linked and portable)
 - [Build](#build)
 ## Build:
+### **If you wish to compile for aarch64, you must build your own SDL3 library for it with an aarch64 OpenGL3 library. Neither are provided, as I have no access to OpenGL3 for aarch64.**
 ### Server:
 As of now, the server only supports Windows and can only be build using Visual Studio. CMake and Linux support is coming.
 ### Client:
