@@ -11,9 +11,12 @@ bool have_ip            = false;
 int sock;
 int bytesReceived;
 int sendRes;
+int next_msgs_are_config = 0;
 
 char ip_address[16];
 char* homedir = pw->pw_dir;
+
+json config;
 
 int client_init() {
     const string pad_id = rw_UUID();
@@ -42,25 +45,37 @@ int client_init() {
             if (connectRes == -1) failed = true;
             else                  connected = true;
         }
+        if (done) return 0;
     } while (!connected);
 
     if (!have_ip) rw_ipstore();
+    check_config();
 
-    timeout.tv_sec = 2147483647;
+    timeout.tv_sec = 0;
     if ((setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout,  sizeof(timeout)) ||
          setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout,  sizeof(timeout))  == -1)) {
         cerr << "setsockopt failed\n"; done = true; return 1;
     }
 
     disconnected_modal = false;
-    char buf[128];
+    string message;
+    char* buf = (char*)malloc(sizeof(char) * (1024 * 256));
     sendRes = send(sock, pad_id.c_str(), pad_id.size() + 1, 0);
     do {
-        memset(buf, 0, 128);
-        bytesReceived = recv(sock, buf, 128, 0);
-        if (bytesReceived == -1) break;
-        else cerr << string(buf, bytesReceived) << "\n";
-    } while (bytesReceived > 1 || sendRes > 0 || !done);
+        memset(buf, 0, 1024 * 256);
+        bytesReceived = recv(sock, buf, 1024 * 256, 0);
+        message = buf;
+        if (bytesReceived == -1 || bytesReceived == 0) break;
+        else {
+            cerr << buf << "\n";
+            if (message.length() > 4) {
+                if (message.substr(0, 3) == "cfg") {
+                    write_config(message.substr(3, message.length()));
+                }
+            }
+        }
+    } while (bytesReceived > 0 || sendRes > 0 || !done);
+    free(buf);
     close(sock);
     connected = false;
     disconnected_modal = true;
@@ -80,12 +95,12 @@ const string id_gen() {
     return to_string(distr(generator));
 }
 
-const string rw_UUID() {    // TODO: maybe change shp_dir to shp_config and append to it. -- avoid uuid_path var but move create_dir outside of first exists()
-    string shp_dir(homedir);
-    shp_dir += "/.config/ShortPad";
-    string uuid_path = shp_dir + "/UUID";
+const string rw_UUID() {
+    string nxsh_dir(homedir);
+    nxsh_dir += "/.config/NexusShell";
+    string uuid_path = nxsh_dir + "/UUID";
     if (!exists(uuid_path)) {
-        if (!exists(shp_dir)) create_directory(shp_dir);
+        if (!exists(nxsh_dir)) create_directory(nxsh_dir);
         const string id = id_gen();
         ofstream uuid_file(uuid_path);
         uuid_file << id;
@@ -99,12 +114,12 @@ const string rw_UUID() {    // TODO: maybe change shp_dir to shp_config and appe
 }
 
 bool rw_ipstore() {
-    string shp_config(homedir);
-    shp_config += "/.config/ShortPad";
-    if (!exists(shp_config)) create_directory(shp_config); // This is here if the end user decides to delete the config directory, while the program is running. The directory already gets created in the rw_UUID function
-    shp_config += "/ipstore";
-    if (exists(shp_config)) {
-        ifstream ip_reader(shp_config);
+    string nxsh_config(homedir);
+    nxsh_config += "/.config/NexusShell";
+    if (!exists(nxsh_config)) create_directory(nxsh_config);
+    nxsh_config += "/ipstore";
+    if (exists(nxsh_config)) {
+        ifstream ip_reader(nxsh_config);
         string read_ip((istreambuf_iterator<char>(ip_reader)),
                                (istreambuf_iterator<char>()));
         ip_reader.close();
@@ -114,43 +129,41 @@ bool rw_ipstore() {
             return true;
         }
     }
-    ofstream ip_hoarder(shp_config);
+    ofstream ip_hoarder(nxsh_config);
     ip_hoarder << ip_address;
     ip_hoarder.close();
     return false;
 }
 
 void remove_ipstore() {
-    string shp_config(homedir);
-    shp_config += "/.config/ShortPad/ipstore";
-    if (exists(shp_config)) std::filesystem::remove(shp_config);
+    string nxsh_config(homedir);
+    nxsh_config += "/.config/NexusShell/ipstore";
+    if (exists(nxsh_config)) std::filesystem::remove(nxsh_config);
 }
 
-void write_config(vector<string> args, int arg_size) {
-	string shp_config(homedir);
-	shp_config += "/.config/ShortPad";
-	if (!exists(shp_config)) create_directory(shp_config);
-	shp_config += "/config.json";
-	json to_write;
-	if (exists(shp_config)) {
-		ifstream parse_config(shp_config);
-		if (parse_config.peek() != std::ifstream::traits_type::eof()) {
-			to_write = json::parse(parse_config);
-		}
-		parse_config.close();
-	}
+void check_config() {
+    string nxsh_config(homedir);
+    nxsh_config += "/.config/NexusShell/config.json";
+    if (exists(nxsh_config)) {
+        ifstream reader(nxsh_config);
+        if (reader.peek() != ifstream::traits_type::eof()) {
+            try {
+                config = json::parse(reader);
+                set_properties();
+            } catch (...) {cerr << "Unable to parse config\n";}
+        }
+        reader.close();
+    }
+}
 
-	for (int i = arg_size - 1; i >= 0; --i) {
-		if (!args[i].empty()) {
-			json* temp = &to_write;
-			for (int k = 0; k < i; ++k) temp = &(*temp)[args[k]];
-			if (i > 0)					*temp = (*temp)[args[i - 1]] = args[i];
-			else						*temp = args[0];
-			break;
-		}
-	}
-
-	ofstream write_config(shp_config);
-	write_config << to_write.dump(4);
-	write_config.close();
+void write_config(string recvd_config) {
+	string nxsh_config(homedir);
+    nxsh_config += "/.config/NexusShell";
+	if (!exists(nxsh_config)) create_directory(nxsh_config);
+    nxsh_config += "/config.json";
+    config = json::parse(recvd_config);
+	ofstream writer(nxsh_config);
+	writer << config.dump(4);
+	writer.close();
+    set_properties();
 }

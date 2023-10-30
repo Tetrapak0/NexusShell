@@ -5,20 +5,23 @@ bool done = false;
 bool failed_backup;
 bool run_setup;
 bool hide_failed;
+bool reconfiguring = false;
 
-int collumns;
-int rows;
+vector<profile> profiles;
 
 ImGuiWindowFlags im_window_flags = 0;
 
 int gui_init() {
     SDL_Init(SDL_INIT_VIDEO);
-    SDL_SetHint(SDL_HINT_IME_SHOW_UI, "1");  // Enable mative IME (Input Method Engine)
-    SDL_Window* window = SDL_CreateWindow("ShortPad", 1280, 720, SDL_WINDOW_OPENGL     |
+    SDL_SetHint(SDL_HINT_IME_SHOW_UI, "1");
+    SDL_SetHint(SDL_HINT_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR, "0");
+    SDL_Window* window = SDL_CreateWindow("NexusShell", 1280, 720, SDL_WINDOW_OPENGL     |
                                                                  SDL_WINDOW_FULLSCREEN |
                                                                  SDL_WINDOW_HIDDEN    );
+    if (window == nullptr) SDL_ERROR("window")
     SDL_Renderer* renderer = SDL_CreateRenderer(window, NULL, SDL_RENDERER_PRESENTVSYNC |
                                                               SDL_RENDERER_ACCELERATED );
+    if (renderer == nullptr) SDL_ERROR("renderer")
     SDL_ShowWindow(window);
 
     IMGUI_CHECKVERSION();
@@ -32,16 +35,19 @@ int gui_init() {
     ImVec4*     colors  = set_colors();
     ImGuiStyle& style   = set_style();
 
+	static const ImWchar glyph_range[] = {0x0020, 0xFFFF};
+	io.Fonts->AddFontFromMemoryCompressedBase85TTF(Helvetica_compressed_data_base85, 16, NULL, glyph_range);
+
     ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
     ImGui_ImplSDLRenderer3_Init(renderer);
 
     screens current_display = get_default_screen();
+    
     hide_failed = true;
-    run_setup = true;
-    collumns = 6; // TODO: Get default layout
-    rows     = 4; //
+    run_setup   = true;
+
     do {
-        //ImGui_ImplSDL3_WaitForEvent();
+        ImGui_ImplSDL3_WaitForEvent();
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             ImGui_ImplSDL3_ProcessEvent(&event);
@@ -82,7 +88,7 @@ int gui_init() {
     return 0;
 }
 
-ImVec4* set_colors(/*TODO: Add color parameters and default values*/) {
+ImVec4* set_colors(/*color parameters*/) {
     ImVec4* colors = ImGui::GetStyle().Colors;
     colors[ImGuiCol_WindowBg]               = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
     colors[ImGuiCol_ChildBg]                = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
@@ -115,21 +121,62 @@ ImVec4* set_colors(/*TODO: Add color parameters and default values*/) {
     return colors;
 }
 // TODO: custom themes and styles
-ImGuiStyle& set_style(/*TODO: Add style parameters and default valurs*/) {
+ImGuiStyle& set_style(/*style parameters*/) {
     ImGuiStyle& style = ImGui::GetStyle();
-    style.ItemSpacing      = ImVec2(0.0f, 0.0f);
-    style.WindowBorderSize = 0.0f;
-    style.ChildBorderSize  = 0.0f;
-    style.PopupBorderSize  = 0.0f;
-    style.FrameBorderSize  = 0.0f;
+    style.ItemSpacing       = ImVec2(0.0f, 0.0f);
+    style.ItemInnerSpacing  = ImVec2(0.0f, 0.0f);
+    style.FramePadding      = ImVec2(0.0f, 0.0f);
+    style.WindowPadding     = ImVec2(0.0f, 0.0f);
+    style.WindowBorderSize  = 0.0f;
+    style.ChildBorderSize   = 0.0f;
+    style.PopupBorderSize   = 0.0f;
+    style.FrameBorderSize   = 0.0f;
 
     return style;
+}
+
+void set_properties() {
+    if (config[config.begin().key()].contains("profiles")) {
+        int profile_count = 0;
+        for (auto& profile : config[config.begin().key()]["profiles"]) if (profile.is_object()) profile_count++;
+        reconfiguring = true;
+        profiles.clear();
+        for (int i = 0; i < profile_count; i++) {
+            profile profile1;
+            if (config[config.begin().key()]["profiles"][to_string(i)].contains("columns")) profile1.columns = std::stoi(config[config.begin().key()]["profiles"][to_string(i)]["columns"].get<string>());
+            if (config[config.begin().key()]["profiles"][to_string(i)].contains("rows"))    profile1.rows = std::stoi(config[config.begin().key()]["profiles"][to_string(i)]["rows"].get<string>());
+            if (config[config.begin().key()]["profiles"][to_string(i)].contains("pages")) {
+                int page_count = 0;
+                for (auto& page : config[config.begin().key()]["profiles"][to_string(i)]["pages"]) if (page.is_object()) page_count++;
+                for (int j = 0; j < page_count; j++) {
+                    if (config[config.begin().key()]["profiles"][to_string(i)]["pages"][to_string(i)].contains("buttons")) {
+                        for (int k = 0; k < profile1.columns * profile1.rows; k++) {
+                            button button1;
+                            if (config[config.begin().key()]["profiles"][to_string(i)]["pages"]["0"]["buttons"].contains(to_string(k))) {
+                                if (config[config.begin().key()]["profiles"][to_string(i)]["pages"]["0"]["buttons"][to_string(k)].contains("label")) button1.label = config[config.begin().key()]["profiles"][to_string(i)]["pages"]["0"]["buttons"][to_string(k)]["label"];
+                                if (config[config.begin().key()]["profiles"][to_string(i)]["pages"]["0"]["buttons"][to_string(k)].contains("has default label")) {
+							        if (config[config.begin().key()]["profiles"][to_string(i)]["pages"]["0"]["buttons"][to_string(k)]["has default label"] == "1") button1.default_label = true;
+							        else if (config[config.begin().key()]["profiles"][to_string(i)]["pages"]["0"]["buttons"][to_string(k)]["has default label"] == "0") button1.default_label = false;
+							        else if ((button1.label == "")) button1.default_label = true;
+							        else button1.default_label = false;
+						        }
+                                if (config[config.begin().key()]["profiles"][to_string(i)]["pages"]["0"]["buttons"][to_string(k)].contains("action")) button1.action = config[config.begin().key()]["profiles"][to_string(i)]["pages"]["0"]["buttons"][to_string(k)]["action"];
+                            }
+                            profile1.buttons.push_back(button1);
+                        }
+                    }
+                }
+            }
+            profiles.push_back(profile1);
+        }
+    }
+    reconfiguring = false;
 }
 
 void draw_main(screens current) { // TODO: Create window in main to display tabs, close button etc.
     ImGuiIO& io = ImGui::GetIO();
     ImGui::Begin("main", NULL, im_window_flags | ImGuiWindowFlags_NoBringToFrontOnFocus); // Allow performance info to always be on top
-    ImGui::SetWindowSize(io.DisplaySize);
+    ImGui::SetWindowSize(ImVec2(io.DisplaySize.x, io.DisplaySize.y));
     ImGui::SetWindowPos(ImVec2(0.0f, 0.0f));
     switch(current) {
         case screens::Home:
@@ -140,33 +187,65 @@ void draw_main(screens current) { // TODO: Create window in main to display tabs
 
 void draw_home() {
     ImGuiIO& io = ImGui::GetIO();
-    for (int i = 1; i <= (collumns * rows); i++) {
-        //TODO: Later do count of buttons in row, and collums drawn for custom layouts (TBIMPL)
-        //NOTE: ImGui::GetForegroundDrawlist()->AddRect(...); // nstead of screen size
-        if (ImGui::Button(to_string(i).c_str(), ImVec2((io.DisplaySize.x / collumns), 
-                                                       (io.DisplaySize.y / rows)))) {
-            string message = SHORTCUT_PREFIX + to_string(i);
-            sendRes = send(sock, message.c_str(), sizeof(message.c_str()) + 1, 0);
+    if (!profiles.empty() && !reconfiguring) {
+        for (int i = 1; i <= (profiles[0].columns * profiles[0].rows); i++) {
+            ImGui::BeginDisabled(profiles[0].buttons[i-1].action == "");
+            if (profiles[0].buttons[i-1].default_label) {
+                if (ImGui::Button(to_string(i).c_str(), ImVec2((io.DisplaySize.x / profiles[0].columns), 
+                                                               (io.DisplaySize.y / profiles[0].rows)))) {
+                    string message = SHORTCUT_PREFIX + to_string(i);
+                    sendRes = send(sock, message.c_str(), sizeof(message.c_str()) + 1, 0);
+                }
+            } else if (profiles[0].buttons[i-1].label.empty()){
+                if (ImGui::Button("##", ImVec2((io.DisplaySize.x / profiles[0].columns), 
+                                               (io.DisplaySize.y / profiles[0].rows)))) {
+                    string message = SHORTCUT_PREFIX + to_string(i);
+                    sendRes = send(sock, message.c_str(), sizeof(message.c_str()) + 1, 0);                            
+                }
+            } else {
+                if (ImGui::Button(profiles[0].buttons[i-1].label.c_str(), ImVec2((io.DisplaySize.x / profiles[0].columns), 
+                                                                                 (io.DisplaySize.y / profiles[0].rows)))) {
+                    string message = SHORTCUT_PREFIX + to_string(i);
+                    sendRes = send(sock, message.c_str(), sizeof(message.c_str()) + 1, 0);                            
+                }
+            }
+            if (i % profiles[0].columns != 0) ImGui::SameLine();
+            ImGui::EndDisabled();
         }
-        if (!(i % collumns == 0)) ImGui::SameLine();
+    } else {
+        if (reconfiguring) {
+            ImGuiStyle& style = ImGui::GetStyle();
+            style.ItemSpacing = ImVec2(1.0f, 1.0f);
+            ImGui::BeginPopup("Reconfiguring");
+            if (ImGui::BeginPopupModal("Reconfiguring", NULL, im_window_flags)) {
+                ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f), ImGuiCond_Always, ImVec2(0.5f,0.5f));
+                ImGui::SetWindowFontScale(2.0f);
+                ImGui::Text("Reconfiguring...\nOlease Wait");
+                ImGui::EndPopup();
+            }
+        }
+        ImGui::BeginDisabled();
+        for (int i = 1; i <= 24; i++) {
+            ImGui::Button(to_string(i).c_str(), ImVec2((io.DisplaySize.x / 6), (io.DisplaySize.y / 4)));
+            if (i % 6 != 0) ImGui::SameLine();
+        }
+        ImGui::EndDisabled();
     }
 }
 
 screens get_default_screen() {
-    // TODO: read json
+    // TODO: read file
     return screens::Home;
 }
 
 void draw_setup() {
-    ImGuiIO&    io    = ImGui::GetIO();
-    ImGuiStyle& style = ImGui::GetStyle();
-    style.ItemSpacing = ImVec2(1.0f, 1.0f);
+    ImGuiIO& io = ImGui::GetIO();
     ImGui::OpenPopup("Setup", im_window_flags);
     if (ImGui::BeginPopupModal("Setup", NULL, im_window_flags)) {
         ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f), ImGuiCond_Always, ImVec2(0.5f,0.5f));
         ImGui::SetWindowFontScale(2.0f);
         ImGui::BeginDisabled(failed == failed_backup);
-        ImGui::Text("Welcome to ShortPad!");
+        ImGui::Text("Welcome to NexusShell!");
         ImGui::Separator();
         if (!hide_failed) {
             if (failed)    ImGui::Text("Connection failed.");
@@ -186,15 +265,13 @@ void draw_setup() {
 }
 
 void draw_disconnected_alert() {
-    ImGuiIO&    io    = ImGui::GetIO();
-    ImGuiStyle& style = ImGui::GetStyle();
-    style.ItemSpacing = ImVec2(1.0f, 1.0f);
+    ImGuiIO& io = ImGui::GetIO();
     ImGui::OpenPopup("Disconnected", im_window_flags);
     if (ImGui::BeginPopupModal("Disconnected", NULL, im_window_flags)) {
         ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f), ImGuiCond_Always, ImVec2(0.5f,0.5f));
         ImGui::SetWindowFontScale(2.0f);
         failed = false;
-        ImGui::Text("Disconnected.");
+        ImGui::Text("Disconnected.");                               // FIXME: Sluggish font
         ImGui::Text("Attempting to reconnect to %s", ip_address);
         if (ImGui::Button("Change IP address")) {
             disconnected_modal  = false;
@@ -203,7 +280,7 @@ void draw_disconnected_alert() {
             hide_failed         = true;
             run_setup           = true;
             remove_ipstore();
-        } 
+        }
         ImGui::EndPopup();
     }
 }

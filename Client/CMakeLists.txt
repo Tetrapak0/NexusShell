@@ -11,9 +11,9 @@ if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES x86_64 AND DEFINED CROSS_COMPILE)
 	set(CMAKE_CXX_COMPILER aarch64-linux-g++)
 endif()
 
-file(GLOB ShPSource ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
+file(GLOB NxShSource ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
 
-add_executable(NexusShell ${ShPSource} 
+add_executable(NexusShell ${NxShSource} 
 						${CMAKE_CURRENT_SOURCE_DIR}/../imgui/imgui_demo.cpp
 						${CMAKE_CURRENT_SOURCE_DIR}/../imgui/imgui_draw.cpp
 						${CMAKE_CURRENT_SOURCE_DIR}/../imgui/imgui_tables.cpp

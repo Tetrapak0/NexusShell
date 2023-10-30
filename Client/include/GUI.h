@@ -12,6 +12,15 @@
 #include "../../imgui/backends/SDL3/SDL_opengl.h"
 #endif
 
+#include "../../Helvetica.h"
+
+#define SDL_ERROR(fail_point) { \
+cerr << "Failed to create " << fail_point << ": " << SDL_GetError() << "\nPress Enter to exit.";  \
+cin.get();																					      \
+done = true;																					  \
+return -1;																						  \
+}
+
 enum class screens { Home, Vol, Media, Spotify };
 
 int gui_init();

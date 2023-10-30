@@ -38,7 +38,7 @@ using std::to_string;
 using std::filesystem::create_directory;
 using std::filesystem::exists;
 
-using json = nlohmann::json;
+using json = nlohmann::ordered_json;
 
 extern bool failed;
 extern bool failed_backup;
@@ -46,11 +46,32 @@ extern bool connected;
 extern bool done;
 extern bool disconnected_modal;
 extern bool have_ip;
+extern bool reconfiguring;
 
 extern int sock;
 extern int sendRes;
 
 extern char ip_address[16];
+extern char* homedir;
+
+class button {
+public:
+	string label = "";
+    bool default_label = true;
+	string action;
+};
+
+class profile {
+public: 
+	int	   columns		   = 6;
+	int	   rows			   = 4;
+	int	   current_page    = 0;
+	vector<button> buttons;
+};
+
+extern vector<profile> profiles;
+
+extern json config;
 
 extern const string id_gen();
 extern const string rw_UUID();
@@ -59,5 +80,7 @@ extern int client_init();
 
 extern bool rw_ipstore();
 
+extern void check_config();
+extern void set_properties();
 extern void remove_ipstore();
-extern void write_config(vector<string> args, int arg_size);
+extern void write_config(string recvd_config);

@@ -26,6 +26,8 @@ There may be other software alternatives to the Elgato Stream Deck and similar p
 - Image Buttons -- Get file and website thumbnails, cache them, send them to client.
 ### Low Priority:
 - Code cleanup
+- Undo for item clearing
+- Numeric sort for JSON elements (profiles, pages, buttons, etc.)
 ## Acquisition:
 - [Releases](https://github.com/Tetrapak0/NexusShell/releases) (Executable is staticaly linked and portable)
 - [Build](#build)
