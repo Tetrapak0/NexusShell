@@ -16,7 +16,7 @@
             - [Cross-Compiling](#32-cross-compiling-for-arm)
             - [For current platform](#33-for-current-platform)
 ### Why?
-There may be other software alternatives to the Elgato Stream Deck and similar products, but none of them provide the same functionality as ShortPad will before exiting beta.
+There may be other software alternatives to the Elgato Stream Deck and similar products, but none of them provide the same functionality as NexusShell will before exiting beta.
 ## Help Wanted:
 #### Any contributions implementing following features will most likely be approved
 ### Top Priority:
