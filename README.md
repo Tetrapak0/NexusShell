@@ -1,5 +1,7 @@
 # ShortPad
-<<<<<<< Updated upstream
+<p align="center">
+  <img src="https://github.com/Tetrapak0/ShortPad/icon.png?raw=true" alt="Icon"/>
+</p>
 
 ## Index:
 - [Why](#why)
@@ -13,12 +15,6 @@
         - [Configure CMake](#3-configure-cmake)
             - [Cross-Compiling](#32-cross-compiling-for-arm)
             - [For current platform](#33-for-current-platform)
-=======
-<p align="center">
-  <img src="https://github.com/Tetrapak0/ShortPad/icon.png?raw=true" alt="Icon"/>
-</p>
-
->>>>>>> Stashed changes
 ### Why?
 There may be other software alternatives to the Elgato Stream Deck and similar products, but none of them provide the same functionality as ShortPad will before exiting beta.
 ## Help Wanted:
