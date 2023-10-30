@@ -159,6 +159,7 @@
     <ClCompile Include="..\imgui\imgui.cpp" />
     <ClCompile Include="..\imgui\imgui_demo.cpp" />
     <ClCompile Include="..\imgui\imgui_draw.cpp" />
+    <ClCompile Include="..\imgui\imgui_stdlib.cpp" />
     <ClCompile Include="..\imgui\imgui_tables.cpp" />
     <ClCompile Include="..\imgui\imgui_widgets.cpp" />
     <ClCompile Include="..\NativeFileDIalogs-Extended\nfd_win.cpp" />
@@ -184,6 +185,7 @@
     <ClInclude Include="..\imgui\imconfig.h" />
     <ClInclude Include="..\imgui\imgui.h" />
     <ClInclude Include="..\imgui\imgui_internal.h" />
+    <ClInclude Include="..\imgui\imgui_stdlib.h" />
     <ClInclude Include="..\NativeFileDIalogs-Extended\include\nfd.h" />
     <ClInclude Include="..\NativeFileDIalogs-Extended\include\nfd.hpp" />
     <ClInclude Include="..\traypp\include\components\button.hpp" />
