@@ -98,25 +98,17 @@ static void ImGui_ImplSDL3_SetClipboardText(void*, const char* text)
     SDL_SetClipboardText(text);
 }
 
-void ImGui_ImplSDL3_WaitForEvent()
-{
+void ImGui_ImplSDL3_WaitForEvent() {
     ImGui_ImplSDL3_Data* bd = ImGui_ImplSDL3_GetBackendData();
 
-    if (!(ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_EnablePowerSavingMode))
-        return;
+    if (!(ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_EnablePowerSavingMode)) return;
 
     Uint32 window_flags = SDL_GetWindowFlags(bd->Window);
     bool window_is_hidden = window_flags & (SDL_WINDOW_HIDDEN | SDL_WINDOW_MINIMIZED);
-    double waiting_time = window_is_hidden ? INFINITY : ImGui::GetEventWaitingTime();
-    if (waiting_time > 0.0)
-    {
-        if (isinf(waiting_time))
-            SDL_WaitEvent(NULL);
-        else
-        {
-            const int waiting_time_ms = (int)(1000.0 * ImGui::GetEventWaitingTime());
-            SDL_WaitEventTimeout(NULL, waiting_time_ms);
-        }
+    double waiting_time = window_is_hidden ? INFINITY : 0.5;
+    if (waiting_time > 0.0) {
+        if (isinf(waiting_time)) SDL_WaitEvent(NULL);
+        else SDL_WaitEventTimeout(NULL, 500);
     }
 }
 
@@ -471,19 +463,6 @@ bool ImGui_ImplSDL3_InitForVulkan(SDL_Window* window)
     ImGui_ImplSDL3_Data* bd = ImGui_ImplSDL3_GetBackendData();
     bd->UseVulkan = true;
     return true;
-}
-
-bool ImGui_ImplSDL3_InitForD3D(SDL_Window* window)
-{
-#if !defined(_WIN32)
-    IM_ASSERT(0 && "Unsupported");
-#endif
-    return ImGui_ImplSDL3_Init(window, nullptr, nullptr);
-}
-
-bool ImGui_ImplSDL3_InitForMetal(SDL_Window* window)
-{
-    return ImGui_ImplSDL3_Init(window, nullptr, nullptr);
 }
 
 bool ImGui_ImplSDL3_InitForSDLRenderer(SDL_Window* window, SDL_Renderer* renderer)

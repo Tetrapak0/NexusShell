@@ -4688,16 +4688,6 @@ void ImGui::UpdateHoveredWindowAndCaptureFlags()
     io.WantTextInput = (g.WantTextInputNextFrame != -1) ? (g.WantTextInputNextFrame != 0) : false;
 }
 
-double ImGui::GetEventWaitingTime()
-{
-    ImGuiContext& g = *GImGui;
-
-    if ((g.IO.ConfigFlags & ImGuiConfigFlags_EnablePowerSavingMode) && g.IO.FrameCountSinceLastInput > 2)
-        return ImMax(0.0, g.MaxWaitBeforeNextFrame);
-    
-    return 0.0;
-}
-
 void ImGui::SetMaxWaitBeforeNextFrame(double time)
 {
     ImGuiContext& g = *GImGui;

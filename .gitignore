@@ -17,15 +17,20 @@
 
 # Visual Studio Files
 .vs/
+Server/.vs/
+.vscode/
 *.user
+*.aps
 
 # Misc. 
+build/
+
 Client/build/
 
-Client-arm64/build/
+Client-aarch64/build/
 
 Server/x64/
 Server/bin/
 
 Server-Linux/
-Server-Linux/bin/
+Server-Linux/build/
