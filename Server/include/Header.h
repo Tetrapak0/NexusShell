@@ -19,6 +19,7 @@
 #include <iomanip>
 #include <Windows.h>
 #include <WinUser.h>
+#include <shellapi.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
@@ -46,7 +47,9 @@ using json = nlohmann::ordered_json;
 
 extern bool done;
 extern bool send_config;
+extern bool button_cleared;
 
+extern int selected_id;
 extern int connected_devices;
 
 class button {
@@ -86,6 +89,7 @@ extern int setup_sock(int& iResult,
 					  struct addrinfo hints,
 					  struct addrinfo* result);
 
+extern void clear_button(int profile, int page, int button);
 extern void configure_id(id* id);
 extern void parse_message(string message);
 extern void write_config(vector<string> args, int arg_size);
