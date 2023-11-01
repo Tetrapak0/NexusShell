@@ -1,5 +1,6 @@
 #include "../include/GUI.h"
 #include "../include/Header.h"
+#include "../include/Config.h"
 
 bool done = false;
 bool failed_backup;
@@ -10,6 +11,7 @@ bool reconfiguring = false;
 vector<profile> profiles;
 
 ImGuiWindowFlags im_window_flags = 0;
+ImGuiStyle default_style;
 
 int gui_init() {
     SDL_Init(SDL_INIT_VIDEO);
@@ -33,6 +35,7 @@ int gui_init() {
 
     ImGui::StyleColorsDark();
     ImVec4*     colors  = set_colors();
+    default_style = ImGui::GetStyle();
     ImGuiStyle& style   = set_style();
 
 	static const ImWchar glyph_range[] = {0x0020, 0xFFFF};
@@ -135,44 +138,6 @@ ImGuiStyle& set_style(/*style parameters*/) {
     return style;
 }
 
-void set_properties() {
-    if (config[config.begin().key()].contains("profiles")) {
-        int profile_count = 0;
-        for (auto& profile : config[config.begin().key()]["profiles"]) if (profile.is_object()) profile_count++;
-        reconfiguring = true;
-        profiles.clear();
-        for (int i = 0; i < profile_count; i++) {
-            profile profile1;
-            if (config[config.begin().key()]["profiles"][to_string(i)].contains("columns")) profile1.columns = std::stoi(config[config.begin().key()]["profiles"][to_string(i)]["columns"].get<string>());
-            if (config[config.begin().key()]["profiles"][to_string(i)].contains("rows"))    profile1.rows = std::stoi(config[config.begin().key()]["profiles"][to_string(i)]["rows"].get<string>());
-            if (config[config.begin().key()]["profiles"][to_string(i)].contains("pages")) {
-                int page_count = 0;
-                for (auto& page : config[config.begin().key()]["profiles"][to_string(i)]["pages"]) if (page.is_object()) page_count++;
-                for (int j = 0; j < page_count; j++) {
-                    if (config[config.begin().key()]["profiles"][to_string(i)]["pages"][to_string(i)].contains("buttons")) {
-                        for (int k = 0; k < profile1.columns * profile1.rows; k++) {
-                            button button1;
-                            if (config[config.begin().key()]["profiles"][to_string(i)]["pages"]["0"]["buttons"].contains(to_string(k))) {
-                                if (config[config.begin().key()]["profiles"][to_string(i)]["pages"]["0"]["buttons"][to_string(k)].contains("label")) button1.label = config[config.begin().key()]["profiles"][to_string(i)]["pages"]["0"]["buttons"][to_string(k)]["label"];
-                                if (config[config.begin().key()]["profiles"][to_string(i)]["pages"]["0"]["buttons"][to_string(k)].contains("has default label")) {
-							        if (config[config.begin().key()]["profiles"][to_string(i)]["pages"]["0"]["buttons"][to_string(k)]["has default label"] == "1") button1.default_label = true;
-							        else if (config[config.begin().key()]["profiles"][to_string(i)]["pages"]["0"]["buttons"][to_string(k)]["has default label"] == "0") button1.default_label = false;
-							        else if ((button1.label == "")) button1.default_label = true;
-							        else button1.default_label = false;
-						        }
-                                if (config[config.begin().key()]["profiles"][to_string(i)]["pages"]["0"]["buttons"][to_string(k)].contains("action")) button1.action = config[config.begin().key()]["profiles"][to_string(i)]["pages"]["0"]["buttons"][to_string(k)]["action"];
-                            }
-                            profile1.buttons.push_back(button1);
-                        }
-                    }
-                }
-            }
-            profiles.push_back(profile1);
-        }
-    }
-    reconfiguring = false;
-}
-
 void draw_main(screens current) { // TODO: Create window in main to display tabs, close button etc.
     ImGuiIO& io = ImGui::GetIO();
     ImGui::Begin("main", NULL, im_window_flags | ImGuiWindowFlags_NoBringToFrontOnFocus); // Allow performance info to always be on top
@@ -183,6 +148,10 @@ void draw_main(screens current) { // TODO: Create window in main to display tabs
             draw_home();
     }
     ImGui::End();
+}
+
+void draw_button() {
+
 }
 
 void draw_home() {
@@ -240,6 +209,14 @@ screens get_default_screen() {
 
 void draw_setup() {
     ImGuiIO& io = ImGui::GetIO();
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, default_style.ItemSpacing);
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, default_style.ItemInnerSpacing);
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, default_style.FramePadding);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, default_style.WindowPadding);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, default_style.WindowBorderSize);
+    ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, default_style.ChildBorderSize);
+    ImGui::PushStyleVar(ImGuiStyleVar_PopupBorderSize, default_style.PopupBorderSize);
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, default_style.FrameBorderSize);
     ImGui::OpenPopup("Setup", im_window_flags);
     if (ImGui::BeginPopupModal("Setup", NULL, im_window_flags)) {
         ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f), ImGuiCond_Always, ImVec2(0.5f,0.5f));
@@ -262,16 +239,25 @@ void draw_setup() {
         // TODO: virtual_keyboard();
         ImGui::EndPopup();
     }
+    ImGui::PopStyleVar(8);
 }
-
+// FIXME: Sluggish font
 void draw_disconnected_alert() {
     ImGuiIO& io = ImGui::GetIO();
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, default_style.ItemSpacing);
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, default_style.ItemInnerSpacing);
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, default_style.FramePadding);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, default_style.WindowPadding);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, default_style.WindowBorderSize);
+    ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, default_style.ChildBorderSize);
+    ImGui::PushStyleVar(ImGuiStyleVar_PopupBorderSize, default_style.PopupBorderSize);
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, default_style.FrameBorderSize);
     ImGui::OpenPopup("Disconnected", im_window_flags);
     if (ImGui::BeginPopupModal("Disconnected", NULL, im_window_flags)) {
         ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f), ImGuiCond_Always, ImVec2(0.5f,0.5f));
         ImGui::SetWindowFontScale(2.0f);
         failed = false;
-        ImGui::Text("Disconnected.");                               // FIXME: Sluggish font
+        ImGui::Text("Disconnected.");
         ImGui::Text("Attempting to reconnect to %s", ip_address);
         if (ImGui::Button("Change IP address")) {
             disconnected_modal  = false;
@@ -283,6 +269,7 @@ void draw_disconnected_alert() {
         }
         ImGui::EndPopup();
     }
+    ImGui::PopStyleVar(8);
 }
 
 #ifdef _DEBUG 
