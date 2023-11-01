@@ -1,11 +1,13 @@
 #include "../include/GUI.h"
 #include "../include/Header.h"
+#include "../include/Config.h"
 
 bool done		   		    = false;
 bool should_draw_properties = false;
 bool set_to_null			= true;
 bool bad_property		    = false;
 bool clear_dialog_shown		= false;
+bool window_hidden			= false;
 
 int properties_to_draw;
 int selected_id = -1;
@@ -19,14 +21,14 @@ ImGuiWindowFlags im_window_flags = 0;
 int gui_init() {
 	SDL_Init(SDL_INIT_VIDEO);
 	SDL_SetHint(SDL_HINT_IME_SHOW_UI, "1");
-	SDL_Window* window = SDL_CreateWindow("NexusShell", 1280, 720, SDL_WINDOW_OPENGL    |
+	SDL_Window* window = SDL_CreateWindow("NexusShell", 1280, 720, SDL_WINDOW_OPENGL  |
 																 SDL_WINDOW_RESIZABLE |
 																 SDL_WINDOW_HIDDEN   );
 	if (window == nullptr) SDL_ERROR("window")
 	SDL_Renderer* renderer = SDL_CreateRenderer(window, NULL, SDL_RENDERER_PRESENTVSYNC);
 	if (renderer == nullptr) SDL_ERROR("renderer")
 	SDL_ShowWindow(window);
-
+	// TODO: add silent startup -- no show window
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO();

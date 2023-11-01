@@ -120,6 +120,9 @@
     <ClCompile Include="..\imgui\imgui_freetype.cpp">
       <Filter>External Sources\Dear ImGui</Filter>
     </ClCompile>
+    <ClCompile Include="src\Config.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\Header.h">
@@ -196,6 +199,9 @@
     </ClInclude>
     <ClInclude Include="..\imgui\imgui_freetype.h">
       <Filter>External Sources\Dear ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Config.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
