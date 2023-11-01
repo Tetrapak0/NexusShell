@@ -1,5 +1,6 @@
 #include "../include/GUI.h"
 #include "../include/Header.h"
+#include "../include/Config.h"
 
 bool done = false;
 bool failed_backup;
@@ -9,6 +10,7 @@ bool reconfiguring = false;
 
 vector<profile> profiles;
 
+ImGuiStyle default_style;
 ImGuiWindowFlags im_window_flags = 0;
 
 int gui_init() {
