@@ -12,16 +12,10 @@ if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES x86_64 AND DEFINED CROSS_COMPILE)
 endif()
 
 file(GLOB NxShSource ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
+file(GLOB ImGuiSource ${CMAKE_CURRENT_SOURCE_DIR}/../imgui/*.cpp)
+file(GLOB ImBackendSource ${CMAKE_CURRENT_SOURCE_DIR}/../imgui/backends/*.cpp)
 
-add_executable(NexusShell ${NxShSource} 
-						${CMAKE_CURRENT_SOURCE_DIR}/../imgui/imgui_demo.cpp
-						${CMAKE_CURRENT_SOURCE_DIR}/../imgui/imgui_draw.cpp
-						${CMAKE_CURRENT_SOURCE_DIR}/../imgui/imgui_tables.cpp
-						${CMAKE_CURRENT_SOURCE_DIR}/../imgui/imgui_widgets.cpp
-						${CMAKE_CURRENT_SOURCE_DIR}/../imgui/imgui.cpp
-						${CMAKE_CURRENT_SOURCE_DIR}/../imgui/backends/imgui_impl_sdl3.cpp 
-						${CMAKE_CURRENT_SOURCE_DIR}/../imgui/backends/imgui_impl_sdlrenderer3.cpp 
-						${CMAKE_CURRENT_SOURCE_DIR}/../imgui/imgui_freetype.cpp)
+add_executable(NexusShell ${NxShSource} ${ImGuiSource} ${ImBackendSource})
 
 if((CMAKE_HOST_SYSTEM_PROCESSOR MATCHES aarch64 OR CMAKE_HOST_SYSTEM_PROCESSOR MATCHES armv8l) OR 
 	(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES x86_64 AND DEFINED CROSS_COMPILE))

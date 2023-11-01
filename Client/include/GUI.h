@@ -14,11 +14,27 @@
 
 #include "../../Helvetica.h"
 
-#define SDL_ERROR(fail_point) { \
-cerr << "Failed to create " << fail_point << ": " << SDL_GetError() << "\nPress Enter to exit.";  \
-cin.get();																					      \
-done = true;																					  \
-return -1;																						  \
+#define SDL_ERROR(fail_point) {												\
+	string what_error(fail_point);											\
+	string message = "Failed to initialize ";								\
+	message += what_error;													\
+	message += SDL_GetError();												\
+	const SDL_MessageBoxButtonData button_data[] = {						\
+		{SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 0, "OK"}					\
+	};																		\
+	int buttonid;															\
+	const SDL_MessageBoxData msgbox_data = {								\
+		SDL_MESSAGEBOX_ERROR,												\
+		NULL,																\
+		"Error!",															\
+		message.c_str(),													\
+		SDL_arraysize(button_data),											\
+		button_data,														\
+		NULL																\
+	};																		\
+	SDL_ShowMessageBox(&msgbox_data, &buttonid);							\
+	done = true;															\
+	exit(-1);																\
 }
 
 enum class screens { Home, Vol, Media, Spotify };

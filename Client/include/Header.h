@@ -7,9 +7,6 @@
 #include <chrono>
 #include <string>
 #include <vector>
-#include <filesystem>
-#include <fstream>
-#include <random>
 
 #include <unistd.h>
 #include <pwd.h>
@@ -27,18 +24,8 @@ using std::cerr;
 using std::string;
 using std::thread;
 using std::vector;
-using std::ifstream;
-using std::ofstream;
-using std::istreambuf_iterator;
-using std::random_device;
-using std::mt19937;
-using std::uniform_int_distribution;
 
 using std::to_string;
-using std::filesystem::create_directory;
-using std::filesystem::exists;
-
-using json = nlohmann::ordered_json;
 
 extern bool failed;
 extern bool failed_backup;
@@ -71,16 +58,4 @@ public:
 
 extern vector<profile> profiles;
 
-extern json config;
-
-extern const string id_gen();
-extern const string rw_UUID();
-
 extern int client_init();
-
-extern bool rw_ipstore();
-
-extern void check_config();
-extern void set_properties();
-extern void remove_ipstore();
-extern void write_config(string recvd_config);
