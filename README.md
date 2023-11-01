@@ -17,6 +17,7 @@
 ## Help Wanted:
 #### Any contributions implementing following features will most likely be approved
 ### Top Priority:
+- Github Actions and artifact uploading
 - Code stability, reliability, efficiency, rigidity and robustness
 - include SDL for aarch64
 ### High Priority:
@@ -31,7 +32,7 @@
 ## Build:
 ### **If you wish to compile for aarch64, you must build your own SDL3 library for it with an aarch64 OpenGL3 library. Neither are provided, as I have no access to OpenGL3 for aarch64.**
 ### Server:
-As of now, the server only supports Windows and can only be build using Visual Studio. CMake and Linux support is coming.
+As of now, the server only supports Windows and can only be build using Visual Studio. CMake and Linux support are coming.
 ### Client:
 The client only supports Linux.
 #### 1. Clone repository
@@ -47,7 +48,7 @@ The client only supports Linux.
 - Fedora: `sudo dnf upgrade --refresh && sudo dnf install cmake`
 #### 3. Configure CMake
 ##### 3.1 Build directory
-```shell
+```console
 cd NexusShell/Client
 mkdir build
 ```
@@ -58,19 +59,19 @@ mkdir build
 - Debian & based: `sudo apt update && sudo apt install gcc-aarch64-linux-gnu`
 - Fedora: `gcc-aarch64-linux-gnu`
 ###### 3.2.2 Configure CMake for cross-compilation
-```shell
+```console
 cmake .. -DCMAKE_BUILD_TYPE=Release -DCROSS_COMPILE
 ```
 #
 #### 3.3 For current platform:
-```shell
+```console
 cmake .. -DCMAKE_BUILD_TYPE=Release
 ```
 #### 4. Build
-```shell
+```console
 cmake --build . --config Release
 ```
 #### 5. Run
-```shell
+```console
 ./NexusShell
 ```
