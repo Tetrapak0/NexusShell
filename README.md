@@ -21,7 +21,7 @@
 - Code stability, reliability, efficiency, rigidity and robustness
 - include SDL for aarch64
 ### High Priority:
-- Image Buttons -- Get file and website thumbnails, cache them, send them to client.
+- Image Buttons -- Get file and website thumbnails, cache them, send them to client. This will be even more important once the remote program volume control feature is implemented.
 ### Low Priority:
 - Code cleanup
 - Undo for item clearing
