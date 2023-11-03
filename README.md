@@ -17,7 +17,6 @@
 ## Help Wanted:
 #### Any contributions implementing following features will most likely be approved
 ### Top Priority:
-- Github Actions and artifact uploading -- The Linux build works on Arch Linux, but not on Ubuntu
 - Code stability, reliability, efficiency, rigidity and robustness
 - include SDL for aarch64
 ### High Priority:
