@@ -15,8 +15,6 @@
 #include <Windows.h>
 #include <WinUser.h>
 #include <shellapi.h>
-#include <winsock2.h>
-#include <ws2tcpip.h>
 
 #include "../../json.hpp"
 
@@ -38,14 +36,3 @@ extern bool button_cleared;
 
 extern int selected_id;
 extern int connected_devices;
-
-extern int server_init();
-
-extern int setup_sock(int& iResult, 
-					  WSADATA& wsaData,
-		   			  SOCKET& ListenSocket,
-					  SOCKET& ClientSocket,
-					  struct addrinfo hints,
-					  struct addrinfo* result);
-
-extern void parse_message(string message);

@@ -40,6 +40,11 @@ public:
 
 class id {
 public:
+	bool reconfigure  = false;
+	bool has_commsock = false;
+	bool has_confsock = false;
+	int belongs_to_comm_thread_no;
+	int belongs_to_conf_thread_no;
 	string ID;
 	vector<profile> profiles;
 	id(string in_ID);
@@ -50,8 +55,6 @@ extern vector<id> ids;
 
 using json = nlohmann::ordered_json;
 
-extern bool send_config;
-
 extern void clear_button(int profile, int page, int button);
 extern void configure_id(id* id);
-extern void write_config(vector<string> args, int arg_size);
+extern void write_config(vector<string> args, size_t arg_size);

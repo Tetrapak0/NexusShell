@@ -143,11 +143,7 @@ ImGuiStyle& set_style(/*style parameters*/) {
 }
 
 int tray_init() {
-#ifdef _WIN32
-	Tray::Tray tray("NexusShell", "..\\..\\icon.ico");
-#else 
-	Tray::Tray tray("NexusShell", "../../icon.ico");
-#endif
+	Tray::Tray tray("NexusShell", "icon.ico");
 	tray.addEntry(Tray::Button("Show Window\0", [&] { ShowWindow(FindWindow(NULL, L"NexusShell"), SW_NORMAL);
 													  SetFocus(FindWindow(NULL, L"NexusShell")); }));
 	tray.addEntry(Tray::Separator());
@@ -253,7 +249,7 @@ void draw_properties(int index) {
 			write_config(to_write, to_write.size());
 			to_write = { CURRENT_ID.ID, "profiles", to_string(0), "pages", to_string(CURRENT_ID.profiles[0].current_page), "buttons", to_string(properties_to_draw), "action", CURRENT_ID_AND_BUTTON.action };
 			write_config(to_write, to_write.size());
-			send_config = true;
+			ids[selected_id].reconfigure = true;
 		}
 		ImGui::EndDisabled();
 		ImGui::SameLine();
