@@ -39,14 +39,17 @@ The client only supports Linux.
 ##### 1.1 Install git if not installed:
 - Arch & based: `sudo pacman -Syu git`
 - Debian & based: `sudo apt update && sudo apt install git`
+- Fedora: `sudo dnf upgrade --refresh && sudo dnf install git`
 ##### 1.2 Clone
 `git clone https://github.com/Tetrapak0/NexusShell`
 #### 2. Install FreeType
 - Arch & based: `sudo pacman -Syu freetype2`
 - Debian & based: `sudo apt update && sudo apt install libfreetype-dev`
+- Fedora: `sudo dnf upgrade --refresh && sudo dnf install freetype-dev`
 #### 3. Install CMake
 - Arch & based: `sudo pacman -Syu cmake`
 - Debian & based: `sudo apt update && sudo apt install cmake`
+- Fedora: `sudo dnf upgrade --refresh && sudo dnf install cmake`
 #### 4. Configure CMake
 ##### 4.1 Build directory
 ```console
@@ -58,6 +61,7 @@ mkdir build
 ###### 4.2.1 Install gcc for aarch64
 - Arch & based: `sudo pacman -Syu aarch64-linux-gnu-gcc`
 - Debian & based: `sudo apt update && sudo apt install gcc-aarch64-linux-gnu`
+- Fedora: `gcc-aarch64-linux-gnu`
 ###### 4.2.2 Configure CMake for cross-compilation
 ```console
 cmake .. -DCMAKE_BUILD_TYPE=Release -DCROSS_COMPILE
