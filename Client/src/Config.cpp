@@ -1,6 +1,12 @@
 #include "../include/Config.h"
 #include "../include/Header.h"
 
+struct passwd* pw = getpwuid(getuid());
+
+char* homedir = pw->pw_dir;
+
+bool have_ip  = false;
+
 const string id_gen() {
     const unsigned long long min = 100000000000000000;
     const unsigned long long max = 999999999999999999;

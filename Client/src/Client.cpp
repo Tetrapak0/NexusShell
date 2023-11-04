@@ -1,82 +1,101 @@
 #include "../include/Header.h"
 #include "../include/Config.h"
+#include "../include/Client.h"
 
-struct passwd* pw = getpwuid(getuid());
-struct timeval timeout;
-
-bool failed;
-bool connected          = false;
+bool failed             = true;
 bool disconnected_modal = false;
-bool have_ip            = false;
-
-int sock;
-int bytesReceived;
-int sendRes;
+bool has_commsock       = false;
+bool has_confsock       = false;
 
 char ip_address[16];
-char* homedir = pw->pw_dir;
 
 json config;
 
-int client_init() { // NOTE: for server: after accepting a connection, accept the config socket on another port and only after allow other clients to connect
-                    //       Same for client. only init second socket after 1st one connects
-    const string pad_id = rw_UUID();
+sockinfo commsock;
+sockinfo confsock;
 
-    sock = socket(AF_INET, SOCK_STREAM, 0);
-    if (sock == -1) {done = true; return 1;}
-
-    timeout.tv_sec = 5;
-    if ((setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout,  sizeof(timeout)) ||
-         setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout,  sizeof(timeout))  == -1)) {
-        done = true; cerr << "setsockopt failed\n"; return 1;
+int client_init() {
+    const string shell_id = rw_UUID();
+    commsock = sock_init(0);
+    confsock = sock_init(1);
+    if (commsock.sock == -1 || confsock.sock == -1) {
+        done = true; // TODO: Add error message;
+        return -1;
     }
-
-    failed             = true;
-    connected          = false;
-
-    struct sockaddr_in hint;
-    hint.sin_family = AF_INET;
-    hint.sin_port = htons(27015);
     have_ip = rw_ipstore();
     check_config();                          // MAYBETODO: Multiple computers -- different configs
+    sock_connect(commsock, shell_id);
+    has_commsock = true;
+    if (!have_ip) rw_ipstore();              // if previous MAYBETODO is implemented, add a check_config here with current connected ip as parameter
+    sock_connect(confsock, shell_id);
+    has_confsock = true;
+    thread configurator(conf_comm);
+    comm_comm();
+    configurator.join();
+    close(commsock.sock);
+    close(confsock.sock);
+    cerr << "------------REBOOTING SOCK------------\n";
+    if (!done) return client_init();
+    return 0;
+}
+
+sockinfo sock_init(int sock_type) {  // 0 = commsock, 1 = confsock
+    sockinfo co_sock;
+    co_sock.sock = socket(AF_INET, SOCK_STREAM, 0);
+    switch (sock_type) {
+        case 0: co_sock.hint.sin_port = htons(27015); break;
+        case 1: co_sock.hint.sin_port = htons(27016); break;
+    }
+    co_sock.hint.sin_family = AF_INET;
+    return co_sock;
+}
+
+void sock_connect(sockinfo& sock, string shell_id) {  // TODO: modify setup window aswell for custom ports;
     do {
         if (!failed) {
-            inet_pton(AF_INET, ip_address, &hint.sin_addr);
-            int connectRes = connect(sock, (struct sockaddr*)&hint, sizeof(hint));
+            inet_pton(AF_INET, ip_address, &sock.hint.sin_addr);
+            int connectRes = connect(sock.sock, (struct sockaddr*)&sock.hint, sizeof(sock.hint));
             cerr << "connectRes: " << connectRes << "\n";
             if (connectRes == -1) failed = true;
-            else                  connected = true;
+            else                  sock.connected = true;
         }
-        if (done) return 0;
-    } while (!connected);
-    if (!have_ip) rw_ipstore();
-    // if previous MAYBETODO is implemented, add a check_config here with current connected ip as parameter
+        if (done) return;
+    } while (!sock.connected);
+    sock.send_result = send(sock.sock, shell_id.c_str(), shell_id.length() + 1, 0);
+}
 
-    timeout.tv_sec = 0;
-    if ((setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout,  sizeof(timeout)) ||
-         setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout,  sizeof(timeout))  == -1)) {
-        cerr << "setsockopt failed\n"; done = true; return 1;
-    }
+void comm_comm() {
+    string message;
+    char buf[19] ;
+    do {
+        memset(buf, 0, 19);
+        commsock.bytes_received = recv(commsock.sock, buf, 19, 0);
+        message = buf;
+        if (commsock.bytes_received == -1 || commsock.bytes_received == 0) break;
+        else cerr << message << "\n";
+        cerr << "br: " << commsock.bytes_received << "\n";
+        cerr << "msg: " << message << "\n";
+    } while (commsock.bytes_received > 0 && commsock.send_result > 0 && !done && has_confsock);
+    commsock.connected = false;
+    has_commsock       = false;
+}
 
-    disconnected_modal = false;
+void conf_comm() {
     string message;
     char* buf = (char*)malloc(sizeof(char) * (1024 * 256));
-    sendRes = send(sock, pad_id.c_str(), pad_id.size() + 1, 0);
     do {
         memset(buf, 0, 1024 * 256);
-        bytesReceived = recv(sock, buf, 1024 * 256, 0);
+        confsock.bytes_received = recv(confsock.sock, buf, 1024 * 256, 0);
         message = buf;
-        if (bytesReceived == -1 || bytesReceived == 0) break;
+        if (confsock.bytes_received == -1 || confsock.bytes_received == 0) break;
         else {
             cerr << message << "\n";
             if (message.substr(0, 3) == "cfg") write_config(message.substr(3, message.length()));
         }
-    } while (bytesReceived > 0 || sendRes > 0 || !done);
+        cerr << "br: " << confsock.bytes_received << "\n";
+    } while (confsock.bytes_received > 0 && confsock.send_result > 0 && !done && has_commsock);
     free(buf);
-    close(sock);
-    connected = false;
-    disconnected_modal = true;
-	cerr << "------------REBOOTING SOCK------------\n";
-    if (!done) return client_init();
-    return 0;
+    confsock.connected = false;
+    has_confsock       = false;
+    return;
 }

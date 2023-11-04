@@ -1,6 +1,7 @@
 #include "../include/GUI.h"
 #include "../include/Header.h"
 #include "../include/Config.h"
+#include "../include/Client.h"
 
 bool done = false;
 bool failed_backup;
@@ -63,7 +64,7 @@ int gui_init() {
         ImGui::NewFrame();
 
         if (run_setup && !have_ip)                       draw_setup();
-        if (!connected && have_ip || disconnected_modal) draw_disconnected_alert();
+        if (!has_commsock && !has_confsock && have_ip || disconnected_modal) draw_disconnected_alert();
 
         im_window_flags |= ImGuiWindowFlags_NoDecoration
                         |  ImGuiWindowFlags_NoDocking
@@ -150,8 +151,13 @@ void draw_main(screens current) { // TODO: Create window in main to display tabs
     ImGui::End();
 }
 
-void draw_button() {
-
+void draw_button(string label, int index) {
+    ImGuiIO& io = ImGui::GetIO();
+    if (ImGui::Button(label.c_str(), ImVec2((io.DisplaySize.x / profiles[0].columns), 
+                                            (io.DisplaySize.y / profiles[0].rows)))) {
+        string message = SHORTCUT_PREFIX + to_string(index);
+        commsock.send_result = send(commsock.sock, message.c_str(), message.length() + 1, 0);                            
+    }
 }
 
 void draw_home() {
@@ -159,25 +165,9 @@ void draw_home() {
     if (!profiles.empty() && !reconfiguring) {
         for (int i = 1; i <= (profiles[0].columns * profiles[0].rows); i++) {
             ImGui::BeginDisabled(profiles[0].buttons[i-1].action == "");
-            if (profiles[0].buttons[i-1].default_label) {
-                if (ImGui::Button(to_string(i).c_str(), ImVec2((io.DisplaySize.x / profiles[0].columns), 
-                                                               (io.DisplaySize.y / profiles[0].rows)))) {
-                    string message = SHORTCUT_PREFIX + to_string(i);
-                    sendRes = send(sock, message.c_str(), sizeof(message.c_str()) + 1, 0);
-                }
-            } else if (profiles[0].buttons[i-1].label.empty()){
-                if (ImGui::Button("##", ImVec2((io.DisplaySize.x / profiles[0].columns), 
-                                               (io.DisplaySize.y / profiles[0].rows)))) {
-                    string message = SHORTCUT_PREFIX + to_string(i);
-                    sendRes = send(sock, message.c_str(), sizeof(message.c_str()) + 1, 0);                            
-                }
-            } else {
-                if (ImGui::Button(profiles[0].buttons[i-1].label.c_str(), ImVec2((io.DisplaySize.x / profiles[0].columns), 
-                                                                                 (io.DisplaySize.y / profiles[0].rows)))) {
-                    string message = SHORTCUT_PREFIX + to_string(i);
-                    sendRes = send(sock, message.c_str(), sizeof(message.c_str()) + 1, 0);                            
-                }
-            }
+            if (profiles[0].buttons[i-1].default_label) draw_button(to_string(i), i);
+            else if (profiles[0].buttons[i-1].label.empty()) draw_button("##", i);
+            else draw_button(profiles[0].buttons[i-1].label, i);
             if (i % profiles[0].columns != 0) ImGui::SameLine();
             ImGui::EndDisabled();
         }
@@ -226,7 +216,7 @@ void draw_setup() {
         ImGui::Separator();
         if (!hide_failed) {
             if (failed)    ImGui::Text("Connection failed.");
-            if (connected) run_setup = false;
+            if (has_commsock && has_confsock) run_setup = false;
         }
         ImGui::Text("Server IP address:");
         ImGui::InputText("##", ip_address, IM_ARRAYSIZE(ip_address));
@@ -243,6 +233,7 @@ void draw_setup() {
 }
 // FIXME: Sluggish font
 void draw_disconnected_alert() {
+    if (has_commsock && has_confsock) disconnected_modal = false;
     ImGuiIO& io = ImGui::GetIO();
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, default_style.ItemSpacing);
     ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, default_style.ItemInnerSpacing);

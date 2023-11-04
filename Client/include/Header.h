@@ -11,10 +11,6 @@
 #include <unistd.h>
 #include <pwd.h>
 
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-
 #include "../../json.hpp"
 
 using std::cout;
@@ -29,33 +25,9 @@ using std::to_string;
 
 extern bool failed;
 extern bool failed_backup;
-extern bool connected;
+extern bool has_commsock;
+extern bool has_confsock;
 extern bool done;
 extern bool disconnected_modal;
-extern bool have_ip;
-extern bool reconfiguring;
-
-extern int sock;
-extern int sendRes;
 
 extern char ip_address[16];
-extern char* homedir;
-
-class button {
-public:
-	string label = "";
-    bool default_label = true;
-	string action;
-};
-
-class profile {
-public: 
-	int	   columns		   = 6;
-	int	   rows			   = 4;
-	int	   current_page    = 0;
-	vector<button> buttons;
-};
-
-extern vector<profile> profiles;
-
-extern int client_init();
