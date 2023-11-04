@@ -1,6 +1,12 @@
 #include "../include/Header.h"
 #include "../include/Config.h"
 
+bool button_cleared = false;
+
+id::id(string in_ID) : ID(in_ID) {}
+bool id::operator==(const id& other) const { return ID == other.ID; }
+vector<id> ids;
+
 void read_config(json& config, id* ID) {
 	if (config[config.begin().key()].contains("profiles")) {
 		ID->profiles.clear();
@@ -12,6 +18,8 @@ void read_config(json& config, id* ID) {
 				button button1;
 				profile1.buttons.push_back(button1);
 			}
+			ID->profiles.push_back(profile1);
+			return;
 		}
 		for (int i = 0; i < profile_count; i++) {
 			profile profile1;
@@ -21,11 +29,13 @@ void read_config(json& config, id* ID) {
 			if (profile_store.contains("pages")) {
 				int page_count = 0;
 				for (auto& page : profile_store["pages"]) if (page.is_object()) page_count++;
-				if (page_count == 0)
+				if (page_count == 0) {
 					for (int a = 0; i < profile1.columns * profile1.rows; i++) {
 						button button1;
 						profile1.buttons.push_back(button1);
 					}
+					continue;
+				}
 				for (int j = 0; j < page_count; j++) {
 					json page_store = profile_store["pages"][to_string(j)];
 					if (page_store.contains("buttons")) {
@@ -81,7 +91,7 @@ void configure_id(id* id) {
 				read_config(config, id);
 				reader.close();
 				cerr << "configured\n";
-				send_config = true;
+				id->reconfigure = true;
 				return;
 			} catch (...) {
 				cerr << "invalid config!\nclearing...\n";
@@ -90,7 +100,7 @@ void configure_id(id* id) {
 				ofstream writer(nxsh_config);
 				writer << empty_config.dump(4);
 				writer.close();
-				send_config = true;
+				id->reconfigure = true;
 			}
 		}
 		reader.close();
@@ -106,7 +116,7 @@ void configure_id(id* id) {
 	ofstream writer(nxsh_config);
 	writer << empty_config.dump(4);
 	writer.close();
-	send_config = true;
+	id->reconfigure = true;
 }
 
 void clear_button(int profile, int page, int button) {
@@ -129,10 +139,10 @@ void clear_button(int profile, int page, int button) {
 	writer.close();
 	read_config(to_remove, &ids[selected_id]);
 	button_cleared = true;
-	send_config = true;
+	ids[selected_id].reconfigure = true;
 }
 
-void write_config(vector<string> args, int arg_size) {
+void write_config(vector<string> args, size_t arg_size) {
 	string nxsh_config(getenv("USERPROFILE"));
 	nxsh_config += "\\AppData\\Roaming\\NexusShell";
 	if (!exists(nxsh_config)) create_directory(nxsh_config);

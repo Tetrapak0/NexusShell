@@ -207,6 +207,7 @@
     <ClInclude Include="include\Config.h" />
     <ClInclude Include="include\GUI.h" />
     <ClInclude Include="include\Header.h" />
+    <ClInclude Include="include\Server.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>

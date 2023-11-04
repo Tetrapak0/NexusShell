@@ -1,5 +1,6 @@
 #include "../include/Header.h"
 #include "../include/GUI.h"
+#include "../include/Server.h"
 
 #ifdef _DEBUG
 int main(int argc, char** argv) {
