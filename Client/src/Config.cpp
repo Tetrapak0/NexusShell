@@ -27,11 +27,14 @@ const string rw_UUID() {
         const string id = id_gen();
         ofstream uuid_file(uuid_path);
         uuid_file << id;
+        uuid_file.close();
         return id;
     } else {
         ifstream uuid_file(uuid_path);
-        const string id((istreambuf_iterator<char>(uuid_file)), 
-                                (istreambuf_iterator<char>()));
+        char idbuf[19];
+        uuid_file.getline(idbuf, 19);
+        const string id(idbuf);
+        uuid_file.close();
         return id;
     }
 }
