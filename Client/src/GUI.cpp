@@ -9,7 +9,7 @@ bool run_setup;
 bool hide_failed;
 bool reconfiguring = false;
 
-vector<profile> profiles;
+vector<profile> profiles = {};
 
 ImGuiStyle default_style;
 ImGuiWindowFlags im_window_flags = 0;
@@ -63,8 +63,8 @@ int gui_init() {
         ImGui_ImplSDL3_NewFrame();
         ImGui::NewFrame();
 
-        if (run_setup && !have_ip)                       draw_setup();
-        if (!has_commsock && !has_confsock && have_ip || disconnected_modal) draw_disconnected_alert();
+        if (run_setup && !have_ip)                            draw_setup();
+        if (!connected && have_ip || disconnected_modal) draw_disconnected_alert();
 
         im_window_flags |= ImGuiWindowFlags_NoDecoration
                         |  ImGuiWindowFlags_NoDocking
@@ -156,7 +156,7 @@ void draw_button(string label, int index) {
     if (ImGui::Button(label.c_str(), ImVec2((io.DisplaySize.x / profiles[0].columns), 
                                             (io.DisplaySize.y / profiles[0].rows)))) {
         string message = SHORTCUT_PREFIX + to_string(index);
-        commsock.send_result = send(commsock.sock, message.c_str(), message.length() + 1, 0);                            
+        send_result = send(sock, message.c_str(), message.length() + 1, 0);                            
     }
 }
 
@@ -216,7 +216,7 @@ void draw_setup() {
         ImGui::Separator();
         if (!hide_failed) {
             if (failed)    ImGui::Text("Connection failed.");
-            if (has_commsock && has_confsock) run_setup = false;
+            if (connected) run_setup = false;
         }
         ImGui::Text("Server IP address:");
         ImGui::InputText("##", ip_address, IM_ARRAYSIZE(ip_address));
@@ -233,7 +233,7 @@ void draw_setup() {
 }
 // FIXME: Sluggish font
 void draw_disconnected_alert() {
-    if (has_commsock && has_confsock) disconnected_modal = false;
+    if (connected) disconnected_modal = false;
     ImGuiIO& io = ImGui::GetIO();
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, default_style.ItemSpacing);
     ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, default_style.ItemInnerSpacing);

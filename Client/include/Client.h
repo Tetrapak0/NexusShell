@@ -4,22 +4,16 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-struct sockinfo {
-    bool connected;
-    int sock;
-    int send_result;
-    int bytes_received;
-    struct sockaddr_in hint;
-};
+#include <string>
 
-extern sockinfo commsock;
-extern sockinfo confsock;
+using std::string;
+
+extern int sock;
+extern int send_result;
+extern int bytes_received;
+
+extern bool connected;
 
 extern int client_init();
 
-extern sockinfo sock_init(int sock_type);
-
-extern void comm_comm();
-extern void conf_comm();
-extern void sock_connect(sockinfo& sock, string shell_id);
-
+extern void comm();

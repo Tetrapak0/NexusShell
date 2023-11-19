@@ -20,7 +20,9 @@ const string id_gen() {
 
 const string rw_UUID() {
     string nxsh_dir(homedir);
-    nxsh_dir += "/.config/NexusShell";
+    nxsh_dir += "/.config";
+    if (!exists(nxsh_dir)) create_directory(nxsh_dir);
+    nxsh_dir += "/NexusShell";
     string uuid_path = nxsh_dir + "/UUID";
     if (!exists(uuid_path)) {
         if (!exists(nxsh_dir)) create_directory(nxsh_dir);
@@ -41,7 +43,9 @@ const string rw_UUID() {
 
 bool rw_ipstore() {
     string nxsh_config(homedir);
-    nxsh_config += "/.config/NexusShell";
+    nxsh_config += "/.config";
+    if (!exists(nxsh_config)) create_directory(nxsh_config);
+    nxsh_config += "/NexusShell";
     if (!exists(nxsh_config)) create_directory(nxsh_config);
     nxsh_config += "/ipstore";
     if (exists(nxsh_config)) {
@@ -69,7 +73,10 @@ void remove_ipstore() {
 
 void check_config() {
     string nxsh_config(homedir);
-    nxsh_config += "/.config/NexusShell/config.json";
+    nxsh_config += "/.config";
+    if (!exists(nxsh_config)) create_directory(nxsh_config);
+    nxsh_config += "/NexusShell";
+    nxsh_config += "/config.json";
     if (exists(nxsh_config)) {
         ifstream reader(nxsh_config);
         if (reader.peek() != ifstream::traits_type::eof()) {
@@ -85,7 +92,9 @@ void check_config() {
 void clear_config() {
     cerr << "here\n";
     string nxsh_config(homedir);
-    nxsh_config += "/.config/NexusShell";
+    nxsh_config += "/.config";
+    if (!exists(nxsh_config)) create_directory(nxsh_config);
+    nxsh_config += "/NexusShell";
 	if (!exists(nxsh_config)) create_directory(nxsh_config);
     nxsh_config += "/config.json";
     ofstream writer(nxsh_config);
@@ -101,7 +110,9 @@ void clear_config() {
 
 void write_config(string recvd_config) {
 	string nxsh_config(homedir);
-    nxsh_config += "/.config/NexusShell";
+    nxsh_config += "/.config";
+    if (!exists(nxsh_config)) create_directory(nxsh_config);
+    nxsh_config += "/NexusShell";
 	if (!exists(nxsh_config)) create_directory(nxsh_config);
     nxsh_config += "/config.json";
     config = json::parse(recvd_config);
