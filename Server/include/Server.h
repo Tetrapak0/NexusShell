@@ -1,11 +1,15 @@
 #pragma once
 
+#define ID_LENGTH 18
+#define SHORTCUT_PREFIX "SH"
+
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#include "Config.h"
 
 using std::string;
 using std::vector;
+
+class id;
 
 struct sockinfo {
 	WSADATA wsaData;
@@ -19,21 +23,13 @@ struct sockinfo {
 
 extern int server_init();
 
-extern int setup_sock(int& iResult,
-					  WSADATA& wsaData,
-					  SOCKET& ListenSocket,
-					  SOCKET& ClientSocket,
-					  struct addrinfo hints,
-					  struct addrinfo* result,
-					  int socktype);
-extern int accept_socket(sockinfo& sock, char* idbuf, char* sock_id, bool& is_valid);
+extern sockinfo sock_init();
 
-extern sockinfo sock_init(int type);
+extern int setup_sock(sockinfo& si);
+extern int accept_socket(sockinfo& sock, char* idbuf, bool& is_valid);
 
 extern bool is_id(string message);
 
-extern void parse_message(string message);
-extern void comm_comm(sockinfo commsock);
-extern void conf_comm(sockinfo confsock);
-extern void reconfigure(id& id, sockinfo& sockinfo);
-extern void begin_accept_cycle(sockinfo& commsock, sockinfo& confsock);
+extern void begin_accept_cycle(sockinfo& sock);
+extern void comm(sockinfo sock);
+extern void parse_message(string& message, id& ID);

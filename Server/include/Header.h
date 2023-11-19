@@ -4,14 +4,12 @@
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 #define WIN32_LEAN_AND_MEAN
 
-#define ID_LENGTH 18
-#define SHORTCUT_PREFIX "SH"
-
 #include <iostream>
 #include <thread>
 #include <string>
 #include <vector>
 #include <iomanip>
+
 #include <Windows.h>
 #include <WinUser.h>
 #include <shellapi.h>

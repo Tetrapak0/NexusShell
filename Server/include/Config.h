@@ -1,14 +1,19 @@
 #pragma once
 
-#define CURRENT_ID_AND_BUTTON ids[selected_id].profiles[0].buttons[index] // TODO: Change this to actual profile and page
-#define CURRENT_ID			  ids[selected_id]
+#define CURRENT_ID				ids[selected_id]
+#define CURRENT_BUTTON			CURRENT_ID.profiles[0].buttons[index] // TODO: Change this to actual profile and page
+#define CURRENT_BUTTON_M1_LOOP  CURRENT_ID.profiles[0].buttons[i-1]
 
 #include <filesystem>
 #include <fstream>
 #include <vector>
 #include <string>
 
+#include "../include/Server.h"
+
 #include "../../json.hpp"
+
+struct sockinfo;
 
 using std::string;
 using std::vector;
@@ -25,7 +30,7 @@ public:
 	string label = "";
 	string label_backup = label;
 	bool   default_label = true;
-	enum   types { File, URL, Command, };
+	enum   types { File, URL, Command, Directory, };
 	types  type = File;
 	string action;
 };
@@ -40,15 +45,32 @@ public:
 
 class id {
 public:
-	bool reconfigure  = false;
-	bool has_commsock = false;
-	bool has_confsock = false;
-	int belongs_to_comm_thread_no;
-	int belongs_to_conf_thread_no;
+	bool locked = false;
 	string ID;
+	string config_file;
+	sockinfo sock;
 	vector<profile> profiles;
-	id(string in_ID);
-	bool operator==(const id& other) const;
+	id() {}
+	id(string in_ID) : ID(in_ID) {};
+	id(const id& ID) {
+		this->ID = ID.ID;
+		this->config_file = ID.config_file;
+		this->profiles = ID.profiles;
+	}
+	id(const id* ID) {
+		this->ID = ID->ID;
+		this->config_file = ID->config_file;
+		this->profiles = ID->profiles;
+	}
+	bool operator==(const id& other) const {
+		return this->ID == other.ID;
+	}
+	id operator=(const id& other) {
+		this->config_file = other.config_file;
+		this->sock = other.sock;
+		this->profiles = other.profiles;
+		return this;
+	}
 };
 
 extern vector<id> ids;
@@ -56,5 +78,6 @@ extern vector<id> ids;
 using json = nlohmann::ordered_json;
 
 extern void clear_button(int profile, int page, int button);
-extern void configure_id(id* id);
+extern void configure_id(id& ID);
+extern void reconfigure(id& ID);
 extern void write_config(vector<string> args, size_t arg_size);

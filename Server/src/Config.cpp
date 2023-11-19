@@ -3,13 +3,11 @@
 
 bool button_cleared = false;
 
-id::id(string in_ID) : ID(in_ID) {}
-bool id::operator==(const id& other) const { return ID == other.ID; }
-vector<id> ids;
+vector<id> ids = {};
 
-void read_config(json& config, id* ID) {
+void read_config(json& config, id& ID) {
 	if (config[config.begin().key()].contains("profiles")) {
-		ID->profiles.clear();
+		ID.profiles.clear();
 		int profile_count = 0;
 		for (auto& profile : config[config.begin().key()]["profiles"]) if (profile.is_object()) profile_count++;
 		if (profile_count == 0) {
@@ -18,7 +16,7 @@ void read_config(json& config, id* ID) {
 				button button1;
 				profile1.buttons.push_back(button1);
 			}
-			ID->profiles.push_back(profile1);
+			ID.profiles.push_back(profile1);
 			return;
 		}
 		for (int i = 0; i < profile_count; i++) {
@@ -55,6 +53,7 @@ void read_config(json& config, id* ID) {
 									if (button_store["type"] == "0") button1.type = button::types::File;
 									else if (button_store["type"] == "1") button1.type = button::types::URL;
 									else if (button_store["type"] == "2") button1.type = button::types::Command;
+									else if (button_store["type"] == "3") button1.type = button::types::Directory;
 									else button1.type = button::types::File;
 								} else button1.type = button::types::File;
 								if (button_store.contains("action")) button1.action = button_store["action"];
@@ -64,7 +63,7 @@ void read_config(json& config, id* ID) {
 					}
 				}
 			}
-			ID->profiles.push_back(profile1);
+			ID.profiles.push_back(profile1);
 		}
 	} else {
 		profile profile1;
@@ -72,35 +71,35 @@ void read_config(json& config, id* ID) {
 			button button1;
 			profile1.buttons.push_back(button1);
 		}
-		ID->profiles.push_back(profile1);
+		ID.profiles.push_back(profile1);
 	}
 }
 
-void configure_id(id* id) {
-	string nxsh_config(getenv("USERPROFILE"));
-	nxsh_config += "\\AppData\\Roaming\\NexusShell\\";
-	if (!exists(nxsh_config)) create_directory(nxsh_config);
-	nxsh_config += id->ID;
-	nxsh_config += ".json";
-	cerr << nxsh_config << "\n";
-	if (exists(nxsh_config)) {
-		ifstream reader(nxsh_config);
+void configure_id(id& ID) {
+	ID.config_file = getenv("USERPROFILE");
+	ID.config_file += "\\AppData\\Roaming\\NexusShell\\";
+	if (!exists(ID.config_file)) create_directory(ID.config_file);
+	ID.config_file += ID.ID;
+	ID.config_file += ".json";
+	cerr << ID.config_file << "\n";
+	if (exists(ID.config_file)) {
+		ifstream reader(ID.config_file);
 		if (reader.peek() != ifstream::traits_type::eof()) {
 			try {
 				json config = json::parse(reader);
-				read_config(config, id);
 				reader.close();
+				read_config(config, ID);
+				reconfigure(ID);
 				cerr << "configured\n";
-				id->reconfigure = true;
 				return;
 			} catch (...) {
-				cerr << "invalid config!\nclearing...\n";
-				string to_write = "{\"" + id->ID + "\": {}}";
-				json empty_config = json::parse(to_write);
-				ofstream writer(nxsh_config);
-				writer << empty_config.dump(4);
-				writer.close();
-				id->reconfigure = true;
+				cerr << "invalid config!\nclearing...\n";		// TODO: Don't clear invalid configs
+				//string to_write = "{\"" + ID.ID + "\": {}}";
+				//json empty_config = json::parse(to_write);
+				//ofstream writer(ID.config_file);
+				//writer << empty_config.dump(4);
+				//writer.close();
+				//reconfigure(ID);
 			}
 		}
 		reader.close();
@@ -110,13 +109,23 @@ void configure_id(id* id) {
 		button button1;
 		profile1.buttons.push_back(button1);
 	}
-	id->profiles.push_back(profile1);
-	string to_write = "{\"" + id->ID + "\": {}}";
+	ID.profiles.push_back(profile1);
+	string to_write = "{\"" + ID.ID + "\": {}}";
 	json empty_config = json::parse(to_write);
-	ofstream writer(nxsh_config);
+	ofstream writer(ID.config_file);
 	writer << empty_config.dump(4);
 	writer.close();
-	id->reconfigure = true;
+	reconfigure(ID);
+}
+
+void reconfigure(id& ID) {
+	if (exists(ID.config_file)) {
+		ifstream reader(ID.config_file);
+		json config = json::parse(reader);
+		reader.close();
+		string configuration = "cfg" + config.dump();
+		ID.sock.iSendResult = send(ID.sock.ClientSocket, configuration.c_str(), configuration.length(), 0);
+	}
 }
 
 void clear_button(int profile, int page, int button) {
@@ -127,19 +136,19 @@ void clear_button(int profile, int page, int button) {
 		return;
 	}
 	nxsh_config += "\\";
-	nxsh_config += ids[selected_id].ID;
+	nxsh_config += CURRENT_ID.ID;
 	nxsh_config += ".json";
 	json to_remove;
 	ifstream reader(nxsh_config);
 	if (reader && reader.peek() != ifstream::traits_type::eof()) to_remove = json::parse(reader);
 	reader.close();
-	to_remove[ids[selected_id].ID]["profiles"][to_string(profile)]["pages"][to_string(page)]["buttons"].erase(to_string(button));
+	to_remove[CURRENT_ID.ID]["profiles"][to_string(profile)]["pages"][to_string(page)]["buttons"].erase(to_string(button));
 	ofstream writer(nxsh_config);
 	writer << to_remove.dump(4);
 	writer.close();
-	read_config(to_remove, &ids[selected_id]);
+	read_config(to_remove, CURRENT_ID);
 	button_cleared = true;
-	ids[selected_id].reconfigure = true;
+	reconfigure(CURRENT_ID);
 }
 
 void write_config(vector<string> args, size_t arg_size) {

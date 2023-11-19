@@ -1,134 +1,111 @@
 #include "../include/Header.h"
 #include "../include/Config.h"
+#include "../include/GUI.h"
 #include "../include/Server.h"
 
 int connected_devices = 0;
-int comm_threads_active = 0;
-int conf_threads_active = 0;
 
 int server_init() {	// make these global
-	sockinfo commsock = sock_init(0);
-	sockinfo confsock = sock_init(1);
-	if (commsock.iResult != -1 && confsock.iResult != -1) {
-		begin_accept_cycle(commsock, confsock);
-	} else {
+	sockinfo sock = sock_init();
+	if (sock.iResult != -1) begin_accept_cycle(sock);
+	else {
 		return -1; // todo: Show error message if window not found; add bool bound_sock
 	}
-	commsock.iResult = shutdown(commsock.ClientSocket, SD_SEND);
-	confsock.iResult = shutdown(confsock.ClientSocket, SD_SEND);
-	closesocket(commsock.ClientSocket);
-	closesocket(confsock.ClientSocket);
+	closesocket(sock.ClientSocket);
 	WSACleanup();
-	connected_devices--;
+	connected_devices = 0;
 	ids.clear();
 	return 0;
 }
 
-sockinfo sock_init(int type) {
+sockinfo sock_init() {
 	sockinfo si;
 	ZeroMemory(&si.hints, sizeof(si.hints));
-	if (setup_sock(si.iResult, si.wsaData, si.ListenSocket, si.ClientSocket, si.hints, si.result, type))
-		si.iResult = -1;
-
+	if (setup_sock(si)) si.iResult = -1;
 	si.ClientSocket = INVALID_SOCKET;
 	return si;
 }
 
-void begin_accept_cycle(sockinfo& commsock, sockinfo& confsock) {
+void begin_accept_cycle(sockinfo& sock) {
 	char idbuf[19];
-	char comm_id[19];
-	char conf_id[19];
-	bool comm_valid;
-	bool conf_valid;
-	do {
-		commsock.ClientSocket = INVALID_SOCKET;
-		confsock.ClientSocket = INVALID_SOCKET;
-		conf_valid = accept_socket(confsock, idbuf, conf_id, conf_valid);
-		comm_valid = accept_socket(commsock, idbuf, comm_id, comm_valid);
-		if (!comm_valid || !conf_valid) continue;
-		if (strncmp(comm_id, conf_id, 19) == 0) {
-			id ID(comm_id);
-			cerr << "ID: " << ID.ID << "\n";
-			configure_id(&ID);
-			ids.push_back(ID);
-			sockinfo communicator_commsock = commsock;
-			sockinfo configurator_confsock = confsock;
-			thread communicator(comm_comm, communicator_commsock);
-			thread configurator(conf_comm, configurator_confsock);
-			communicator.detach();
-			configurator.detach();
-			connected_devices++;
-		} // else continue; // This isn't required rn
-	} while (!done);
+	bool is_valid;
+	vector<std::shared_ptr<thread>> socks;
+	sock.ClientSocket = INVALID_SOCKET;
+	while (!done) {
+		sockinfo accept_sock = sock;
+		is_valid = accept_socket(accept_sock, idbuf, is_valid);
+		if (!is_valid) { closesocket(accept_sock.ClientSocket); continue; }
+		id ID(idbuf);
+		cerr << "ID: " << ID.ID << "\n";
+		ID.sock = accept_sock;
+		configure_id(ID);
+		ids.push_back(ID);
+		socks.push_back(std::make_unique<thread>(comm, accept_sock));
+	}
+	for (auto& sock : socks) sock->join();
 }
 
-int accept_socket(sockinfo& sock, char* idbuf, char* sock_id, bool& id_valid) {
-	while (sock.ClientSocket == INVALID_SOCKET) sock.ClientSocket = accept(sock.ListenSocket, NULL, NULL);
+int accept_socket(sockinfo& sock, char* idbuf, bool& id_valid) {
+	while (sock.ClientSocket == INVALID_SOCKET && !done) sock.ClientSocket = accept(sock.ListenSocket, NULL, NULL);
 	sock.iResult = recv(sock.ClientSocket, idbuf, 19, 0);
-	if (is_id(idbuf)) {
-		strncpy(sock_id, idbuf, 19);
-		return true;
-	} else return false;
+	if (is_id(idbuf)) return true;
+	return false;
 }
 
-void comm_comm(sockinfo commsock) {
-	int comm_thread_no = comm_threads_active++;
-	cerr << comm_thread_no << "\n";
-	id& comm_id = ids[comm_thread_no];
-	comm_id.belongs_to_comm_thread_no = comm_thread_no;	// Is this needed? using id comparison is more reliable
-	comm_id.has_commsock			  = true;
-	char buffer[19];
+void comm(sockinfo sock) {
+	string ID = ids[connected_devices++].ID;
+	char buffer[19];	// FIXME: Potential buffer overflow, make sure to also fix in accept cycle
+	ids[connected_devices - 1].sock = sock;
 	do {
-		commsock.iResult = recv(commsock.ClientSocket, buffer, 19, 0);
-		if (commsock.iResult > 0) {
-			parse_message(buffer);
-			commsock.iSendResult = send(commsock.ClientSocket, buffer, commsock.iResult, 0);
-		}
-	} while (!done && commsock.iSendResult > 0 && commsock.iResult > 0 && comm_id.has_confsock);
-	for (int i = 0; i < ids.size(); i++)  if (ids[i].ID == comm_id.ID)  ids.erase(ids.begin() + i);
-	comm_threads_active--;
-	connected_devices--;
-}
-
-void reconfigure(id& id, sockinfo& confsock) {
-	do {
-		if (id.reconfigure) {
-			string nxsh_config(getenv("USERPROFILE"));
-			nxsh_config += "\\AppData\\Roaming\\NexusShell\\";
-			nxsh_config += id.ID;
-			nxsh_config += ".json";
-			if (exists(nxsh_config)) {
-				ifstream reader(nxsh_config);
-				json config = json::parse(reader);
-				string configuration = "cfg" + config.dump();
-				cerr << configuration << "\n";
-				confsock.iSendResult = send(confsock.ClientSocket, configuration.c_str(), configuration.length(), 0);
+		sock.iResult = recv(sock.ClientSocket, buffer, 19, 0);
+		if (sock.iResult > 0) {
+			string message(buffer);
+			for (int i = 0; i < connected_devices; i++) {
+				if (ids[i].ID == ID) {
+					while (ids[i].locked) {}
+					ids[i].locked = true;
+					ids[i].sock = sock;
+					parse_message(message, ids[i]);
+					ids[i].locked = false;
+				}
 			}
+			//sock.iSendResult = send(sock.ClientSocket, buffer, sock.iResult, 0);
 		}
-		id.reconfigure = false;
-		Sleep(1000);
-	} while (!done && id.has_commsock && id.has_confsock && confsock.iSendResult && confsock.iResult);
-}
-
-void conf_comm(sockinfo confsock) {
-	int conf_thread_no = ++conf_threads_active - 1;
-	cerr << conf_thread_no;
-	id& conf_id = ids[conf_thread_no];
-	conf_id.belongs_to_conf_thread_no = conf_thread_no;
-	conf_id.has_confsock			  = true;
-
-	auto reconfigure_lambda = [&conf_id, &confsock] {
-		reconfigure(conf_id, confsock);
-	};
-
-	thread configurator(reconfigure_lambda);
-	char* buffer = (char*)malloc(sizeof(char) * (1024 * 256));
-	do {
-		confsock.iResult = recv(confsock.ClientSocket, buffer, 1024 * 256, 0);
-	} while (!done && confsock.iSendResult > 0 && confsock.iResult > 0 && conf_id.has_commsock);
-	free(buffer);
-	conf_threads_active--;
-	configurator.join();
+	} while (!done && sock.iSendResult > 0 && sock.iResult > 0);
+	vector<id> swapper;
+	int ids_size = ids.size();
+	int selected_id_back = selected_id;
+	int id_index = -1;
+	bool incremented = false;
+	string selected_id_id_back = selected_id_id;
+	selected_id = -1;
+	selected_id_id = "";
+	for (vector<id>::iterator it = ids.begin(); it != ids.end(); ++it) {
+		if (!incremented) ++id_index;
+		cerr << "ID from iter: " << (*it).ID << "\n";
+		cerr << "rows from iter: " << (*it).profiles[0].rows << "\n";
+		if ((*it).ID == ID)  incremented = true;
+		else swapper.push_back(*it); // Not using vector::erase (or that with std::remove), because it moshes data between objects
+	}
+	ids.clear();
+	ids = swapper;
+	if (selected_id_back != id_index && selected_id_back > id_index) {
+		selected_id_id_back = ids[--selected_id_back].ID;
+		selected_id = selected_id_back;
+		selected_id_id = selected_id_id_back;
+	} else if (!selected_id_back){
+		selected_id = selected_id_back;
+		should_draw_properties = false;
+		clear_dialog_shown = false;
+		properties_to_draw = -1;
+		selected_id_id = selected_id_id_back;
+	}
+	for (vector<id>::iterator it = ids.begin(); it != ids.end(); ++it) {
+		cerr << "IDs: " << (*it).ID << "\n";
+		cerr << "profile1 rows: " << (*it).profiles[0].rows << "\n";
+	}
+	closesocket(sock.ClientSocket);
+	connected_devices--;
 }
 
 bool is_id(string message) {
@@ -139,87 +116,66 @@ bool is_id(string message) {
 			string check_id;
 			convert_back << convert_id;
 			convert_back >> check_id;
-			if ((check_id.length() == ID_LENGTH) &&
-				!(std::find(ids.begin(), ids.end(), check_id) != ids.end())) {
+			if ((check_id.length() == ID_LENGTH))
+				for (id& temp_id : ids) if (temp_id.ID == check_id) return false;
 				return true;
-			}
 		} catch (...) {}
 	}
 	return false;
 }
 
-void parse_message(string message) {
+void parse_message(string& message, id& ID) {
 	if (message.substr(0, 2) == SHORTCUT_PREFIX) {
 		string act_pos = message.substr(2, message.length());
 		int pos = std::stoi(act_pos);
 		pos--;
-		if (!ids[0].profiles[0].buttons[pos].action.empty()) {
-			string nospace_action = "";
-#ifdef _DEBUG
-			if (ids[0].profiles[0].buttons[pos].type == button::types::URL) nospace_action = "start ";
-			if (ids[0].profiles[0].buttons[pos].type != button::types::URL) nospace_action += "\"";
-			nospace_action += ids[0].profiles[0].buttons[pos].action;
-			if (ids[0].profiles[0].buttons[pos].type != button::types::URL) nospace_action += "\"";
-#else
+		if (!ID.profiles[0].buttons[pos].action.empty()) {
+			string nospace_action = "\"";
+			nospace_action += ID.profiles[0].buttons[pos].action;
 			nospace_action += "\"";
-			nospace_action += ids[0].profiles[0].buttons[pos].action;
-			nospace_action += "\"";
-#endif
 			cerr << "Opening: " << nospace_action.c_str() << "\n";
-#ifdef _DEBUG
-			thread runner([nospace_action]() {
-				system(nospace_action.c_str());
-			});	
-			runner.detach();
-#else
+
 			std::wstring wstring_action = std::wstring(nospace_action.begin(), nospace_action.end());
 			wchar_t* wchar_action = (wchar_t*)wstring_action.c_str();
-			ShellExecute(NULL, L"open", wchar_action, NULL, NULL, SW_SHOW);
-							 // "explore" for folders
-							 // "properties" for properties
-#endif
+
+			switch (ID.profiles[0].buttons[pos].type) {
+				case button::types::Directory:
+					ShellExecute(NULL, L"explore", wchar_action, NULL, NULL, SW_SHOW);
+					break;
+				default:
+					ShellExecute(NULL, L"open", wchar_action, NULL, NULL, SW_SHOW);
+			}
 		}
 		return;
 	}
 	// TODO: add set_screen() function to change "working directory"
-	return;
 }
 
-int setup_sock(int& iResult,
-			   WSADATA& wsaData,
-			   SOCKET& ListenSocket,
-			   SOCKET& ClientSocket,
-			   struct addrinfo hints,
-			   struct addrinfo* result,
-			   int socktype) {	// 0 for commsock, 1 for confsock, and so on if needed
-	if (iResult = WSAStartup(MAKEWORD(2, 2), &wsaData)) return 1;
-	hints.ai_family = AF_INET;
-	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_protocol = IPPROTO_TCP;
-	hints.ai_flags = AI_PASSIVE;
-	if (socktype == 0) iResult = getaddrinfo(NULL, "27015", &hints, &result);	// TODO: Let the user specify the port they wish to use
-	else if (socktype == 1) iResult = getaddrinfo(NULL, "27016", &hints, &result);
-	if (iResult) {
+int setup_sock(sockinfo& si) {
+	if (si.iResult = WSAStartup(MAKEWORD(2, 2), &si.wsaData)) return 1;
+	si.hints.ai_family = AF_INET;
+	si.hints.ai_socktype = SOCK_STREAM;
+	si.hints.ai_protocol = IPPROTO_TCP;
+	si.hints.ai_flags = AI_PASSIVE;
+	si.iResult = getaddrinfo(NULL, "27015", &si.hints, &si.result);	// TODO: Let the user specify the port
+	if (si.iResult) { WSACleanup(); return 1; }
+	si.ListenSocket = socket(si.result->ai_family, si.result->ai_socktype, si.result->ai_protocol);
+	if (si.ListenSocket == INVALID_SOCKET) {
+		freeaddrinfo(si.result);
 		WSACleanup();
 		return 1;
 	}
-	ListenSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
-	if (ListenSocket == INVALID_SOCKET) {
-		freeaddrinfo(result);
-		WSACleanup();
-		return 1;
-	}
-	iResult = bind(ListenSocket, result->ai_addr, (int)result->ai_addrlen);
-	if (iResult == SOCKET_ERROR) {
+	si.iResult = bind(si.ListenSocket, si.result->ai_addr, (int)si.result->ai_addrlen);
+	if (si.iResult == SOCKET_ERROR) {
 		ShowWindow(FindWindow(NULL, L"NexusShell"), SW_NORMAL);
 		SetFocus(FindWindow(NULL, L"NexusShell"));
-		freeaddrinfo(result);
-		closesocket(ListenSocket);
+		freeaddrinfo(si.result);
+		closesocket(si.ListenSocket);
 		WSACleanup();
 		return 1;
 	}
-	if (listen(ListenSocket, SOMAXCONN) == SOCKET_ERROR) {
-		closesocket(ListenSocket);
+	if (listen(si.ListenSocket, SOMAXCONN) == SOCKET_ERROR) {
+		closesocket(si.ListenSocket);
 		WSACleanup();
 		return 1;
 	}
