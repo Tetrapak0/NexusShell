@@ -2,6 +2,9 @@
 
 #define SHORTCUT_PREFIX "SH"
 
+#define LOG(x) cerr << x << "\n";
+#define VAR_LOG(x, y) cerr << x << ": " << y << "\n";
+
 #include <iostream>
 #include <thread>
 #include <chrono>
