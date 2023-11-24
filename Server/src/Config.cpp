@@ -2,6 +2,7 @@
 #include "../include/Config.h"
 
 bool button_cleared = false;
+bool ids_locked = false;
 
 vector<id> ids = {};
 
@@ -12,14 +13,12 @@ void read_config(json& config, id& ID) {
 		for (auto& profile : config[config.begin().key()]["profiles"]) if (profile.is_object()) profile_count++;
 		if (profile_count == 0) {
 			profile profile1;
-			for (int a = 0; a < profile1.columns * profile1.rows; a++) {
-				button button1;
-				profile1.buttons.push_back(button1);
-			}
+			for (int a = 0; a < profile1.columns * profile1.rows; a++)
+				profile1.buttons.push_back(button());
 			ID.profiles.push_back(profile1);
 			return;
 		}
-		for (int i = 0; i < profile_count; i++) {
+		for (int i = 0; i < profile_count; ++i) {
 			profile profile1;
 			json profile_store = config[config.begin().key()]["profiles"][to_string(i)];
 			if (profile_store.contains("columns")) profile1.columns = std::stoi(profile_store["columns"].get<string>());
@@ -28,16 +27,14 @@ void read_config(json& config, id& ID) {
 				int page_count = 0;
 				for (auto& page : profile_store["pages"]) if (page.is_object()) page_count++;
 				if (page_count == 0) {
-					for (int a = 0; i < profile1.columns * profile1.rows; i++) {
-						button button1;
-						profile1.buttons.push_back(button1);
-					}
+					for (int a = 0; i < profile1.columns * profile1.rows; ++i) 
+						profile1.buttons.push_back(button());
 					continue;
 				}
-				for (int j = 0; j < page_count; j++) {
+				for (int j = 0; j < page_count; ++j) {
 					json page_store = profile_store["pages"][to_string(j)];
 					if (page_store.contains("buttons")) {
-						for (int k = 0; k < profile1.columns * profile1.rows; k++) {
+						for (int k = 0; k < profile1.columns * profile1.rows; ++k) {
 							button button1;
 							if (page_store["buttons"].contains(to_string(k))) {
 								json button_store = page_store["buttons"][to_string(k)];
@@ -67,10 +64,8 @@ void read_config(json& config, id& ID) {
 		}
 	} else {
 		profile profile1;
-		for (int i = 1; i <= profile1.columns * profile1.rows; i++) {
-			button button1;
-			profile1.buttons.push_back(button1);
-		}
+		for (int i = 1; i <= profile1.columns * profile1.rows; ++i)
+			profile1.buttons.push_back(button());
 		ID.profiles.push_back(profile1);
 	}
 }
@@ -87,6 +82,7 @@ void configure_id(id& ID) {
 		if (reader.peek() != ifstream::traits_type::eof()) {
 			try {
 				json config = json::parse(reader);
+				cerr << "here\n";
 				reader.close();
 				read_config(config, ID);
 				reconfigure(ID);
@@ -105,10 +101,8 @@ void configure_id(id& ID) {
 		reader.close();
 	}
 	profile profile1;
-	for (int i = 1; i <= profile1.columns * profile1.rows; i++) {
-		button button1;
-		profile1.buttons.push_back(button1);
-	}
+	for (int i = 1; i <= profile1.columns * profile1.rows; ++i)
+		profile1.buttons.push_back(button());
 	ID.profiles.push_back(profile1);
 	string to_write = "{\"" + ID.ID + "\": {}}";
 	json empty_config = json::parse(to_write);
@@ -121,10 +115,42 @@ void configure_id(id& ID) {
 void reconfigure(id& ID) {
 	if (exists(ID.config_file)) {
 		ifstream reader(ID.config_file);
-		json config = json::parse(reader);
+		json config;
+		try {
+			config = json::parse(reader);
+		} catch (...) {
+			cerr << "Invalid Config\n";
+			reader.close();
+			return;	// TODO: Change all functions that oculd fail to int and return 1
+		}
 		reader.close();
+		ID.config = config;
+		for (int i = 0; i < ID.profiles.size(); ++i) {
+			json& profile_store = config[config.begin().key()]["profiles"][to_string(i)];
+			if (profile_store.contains("pages")) {
+				int page_count = 0;
+				for (auto& page : profile_store["pages"]) if (page.is_object()) page_count++;
+				if (page_count == 0) continue;
+				for (int j = 0; j < page_count; ++j) {
+					json& page_store = profile_store["pages"][to_string(j)];
+					if (page_store.contains("buttons")) {
+						for (int k = 0; k < ID.profiles[i].columns * ID.profiles[i].rows; ++k) {
+							if (page_store["buttons"].contains(to_string(k))) {
+								json& button_store = page_store["buttons"][to_string(k)];
+								if (button_store.contains("type"))  button_store.erase("type");
+								if (button_store.contains("action")) {
+									if (button_store["action"] == "") {} 
+									else button_store["action"] = "1";
+								}
+							}
+						}
+					}
+				}
+			}
+		}
 		string configuration = "cfg" + config.dump();
-		ID.sock.iSendResult = send(ID.sock.ClientSocket, configuration.c_str(), configuration.length(), 0);
+		sock_map[ID.ID].iSendResult = send(sock_map[ID.ID].ClientSocket, configuration.c_str(), configuration.length(), 0);
+		cerr << "here: " << sock_map[ID.ID].iSendResult << "\n";
 	}
 }
 
@@ -140,18 +166,20 @@ void clear_button(int profile, int page, int button) {
 	nxsh_config += ".json";
 	json to_remove;
 	ifstream reader(nxsh_config);
-	if (reader && reader.peek() != ifstream::traits_type::eof()) to_remove = json::parse(reader);
+	if (reader && reader.peek() != ifstream::traits_type::eof()) to_remove = json::parse(reader);	// FIXME: no if (reader
 	reader.close();
-	to_remove[CURRENT_ID.ID]["profiles"][to_string(profile)]["pages"][to_string(page)]["buttons"].erase(to_string(button));
-	ofstream writer(nxsh_config);
-	writer << to_remove.dump(4);
-	writer.close();
-	read_config(to_remove, CURRENT_ID);
+	if (to_remove[CURRENT_ID.ID]["profiles"][to_string(profile)]["pages"][to_string(page)]["buttons"].contains(to_string(button))) {
+		to_remove[CURRENT_ID.ID]["profiles"][to_string(profile)]["pages"][to_string(page)]["buttons"].erase(to_string(button));
+		ofstream writer(nxsh_config);
+		writer << to_remove.dump(4);
+		writer.close();
+		read_config(to_remove, CURRENT_ID);
+	}
 	button_cleared = true;
-	reconfigure(CURRENT_ID);
+	cerr << "cleared\n";
 }
 
-void write_config(vector<string> args, size_t arg_size) {
+void write_config(vector<string> args, size_t arg_size) {	// TODO: modify ID::config instead of using this.
 	string nxsh_config(getenv("USERPROFILE"));
 	nxsh_config += "\\AppData\\Roaming\\NexusShell";
 	if (!exists(nxsh_config)) create_directory(nxsh_config);

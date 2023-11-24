@@ -47,10 +47,11 @@
 	exit(-1);																\
 }
 
-extern bool should_draw_properties;
+extern bool should_draw_id_properties;
+extern bool should_draw_button_properties;
 extern bool clear_dialog_shown;
 
-extern int properties_to_draw;
+extern int button_properties_to_draw;
 extern int selected_id;
 
 extern std::string selected_id_id;
