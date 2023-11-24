@@ -126,16 +126,16 @@ ImVec4* set_colors(/*theme parameters*/) {
 }
 // TODO: custom themes and styles
 ImGuiStyle& set_style(/*style parameters*/) {
-	ImGuiStyle& style		= ImGui::GetStyle();
-	style.ItemSpacing		= ImVec2(0.0f, 0.0f);
-	style.ItemInnerSpacing	= ImVec2(0.0f, 0.0f);
-	style.GrabMinSize		= 10;
-	style.WindowBorderSize	= 0;
-	style.ChildBorderSize	= 0;
-	style.PopupBorderSize	= 0;
-	style.FrameBorderSize	= 0;
-	style.TabBorderSize		= 0;
-	style.LogSliderDeadzone = 4;
+	ImGuiStyle& style				= ImGui::GetStyle();
+	style.ItemSpacing				= ImVec2(0.0f, 0.0f);
+	style.ItemInnerSpacing			= ImVec2(0.0f, 0.0f);
+	style.GrabMinSize				= 10;
+	style.WindowBorderSize			= 0;
+	style.ChildBorderSize			= 0;
+	style.PopupBorderSize			= 0;
+	style.FrameBorderSize			= 0;
+	style.TabBorderSize				= 0;
+	style.LogSliderDeadzone			= 4;
 
 	return style;
 }
@@ -161,7 +161,8 @@ void clear_dialog() {
 		ImGui::Text("Are you sure you want to\nclear this item?");
 		ImGui::Text("There is no going back!");
 		if (ImGui::Button("Yes")) {
-			clear_button(0, 0, properties_to_draw);
+			clear_button(CURRENT_ID_OBJ.current_profile, 0, button_properties_to_draw);
+			reconfigure(CURRENT_ID_OBJ);
 			clear_dialog_shown = false;
 		}
 		ImGui::SameLine();
@@ -231,10 +232,38 @@ void draw_properties(int index) {
 				break;
 		}
 		ImGui::BeginDisabled(original_action == "");
-		if (ImGui::Button("OK")) {
-			if (CURRENT_ID_AND_BUTTON.label_backup != CURRENT_ID_AND_BUTTON.label) {
-				CURRENT_ID_AND_BUTTON.default_label = false;
-				CURRENT_ID_AND_BUTTON.label_backup = CURRENT_ID_AND_BUTTON.label;
+		if (ImGui::Button("OK") || press_ok) {
+			if (!CURRENT_ID_OBJ.locked) {
+				press_ok = false;
+				CURRENT_ID_OBJ.locked = true;
+				if (CURRENT_BUTTON.label_backup != CURRENT_BUTTON.label) {
+					CURRENT_BUTTON.default_label = false;
+					CURRENT_BUTTON.label_backup = CURRENT_BUTTON.label;
+				}
+				CURRENT_BUTTON.type = static_cast<button::types>(original_type);
+				CURRENT_BUTTON.action = original_action;
+				original_type = NULL;
+				original_action = "";
+				set_to_null = true;
+				should_draw_button_properties = false;
+				vector<string> to_write;
+				to_write = { CURRENT_ID, "profiles", to_string(CURRENT_ID_OBJ.current_profile), "pages", to_string(CURRENT_PROFILE.current_page), "buttons", to_string(button_properties_to_draw), "label", CURRENT_BUTTON.label };
+				write_config(to_write, to_write.size());
+				to_write = { CURRENT_ID, "profiles", to_string(CURRENT_ID_OBJ.current_profile), "pages", to_string(CURRENT_PROFILE.current_page), "buttons", to_string(button_properties_to_draw), "has default label", to_string(CURRENT_BUTTON.default_label) };
+				write_config(to_write, to_write.size());
+				to_write = { CURRENT_ID, "profiles", to_string(CURRENT_ID_OBJ.current_profile), "pages", to_string(CURRENT_PROFILE.current_page), "buttons", to_string(button_properties_to_draw), "type", to_string(CURRENT_BUTTON.type) };
+				write_config(to_write, to_write.size());
+				to_write = { CURRENT_ID, "profiles", to_string(CURRENT_ID_OBJ.current_profile), "pages", to_string(CURRENT_PROFILE.current_page), "buttons", to_string(button_properties_to_draw), "action", CURRENT_BUTTON.action };
+				write_config(to_write, to_write.size());
+				reconfigure(CURRENT_ID_OBJ);
+				CURRENT_ID_OBJ.locked = false;
+			} else {
+				press_ok = true;
+				ImGui::OpenPopup("mutex");
+				if (ImGui::BeginPopupModal("mutex", NULL, im_window_flags)) {
+					ImGui::Text("Please wait for id::locked");
+					ImGui::EndPopup();
+				}
 			}
 			CURRENT_ID_AND_BUTTON.type = static_cast<button::types>(original_type);
 			CURRENT_ID_AND_BUTTON.action = original_action;
@@ -271,8 +300,8 @@ void draw_button(string label, int index) {
 	ImGuiIO& io = ImGui::GetIO();
 	float x_size = io.DisplaySize.x - 185;
 	if (selected_id != -1) {
-		if (ImGui::Button(label.c_str(), ImVec2(x_size / ids[selected_id].profiles[0].columns, 
-												io.DisplaySize.y / ids[selected_id].profiles[0].rows))) {
+		if (ImGui::Button(label.c_str(), ImVec2(x_size / CURRENT_PROFILE.columns,
+												io.DisplaySize.y / CURRENT_PROFILE.rows))) {
 			draw_properties(index - 1);
 			should_draw_properties = true;
 			properties_to_draw = index - 1;
@@ -282,10 +311,12 @@ void draw_button(string label, int index) {
 // FIXME: Occasional thread crash. Rare, yet is present.
 void draw_editor() {
 	ImGuiIO& io = ImGui::GetIO();
-	float x_size = io.DisplaySize.x - 185;
+	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 0.0f));
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+	float x_size = io.DisplaySize.x - 175;
 	ImGui::Begin("editor", NULL, im_window_flags);
 	ImGui::SetWindowSize(ImVec2(x_size, io.DisplaySize.y));
-	ImGui::SetWindowPos(ImVec2(186.0f, 0.0f));
+	ImGui::SetWindowPos(ImVec2(176.0f, 0.0f));
 	if (selected_id != -1) {
 		for (int i = 1; i <= CURRENT_ID.profiles[0].columns * CURRENT_ID.profiles[0].rows; i++) {
 			if (CURRENT_ID.profiles[0].buttons[i - 1].default_label) draw_button(std::to_string(i), i);
@@ -301,8 +332,8 @@ void draw_editor() {
 		}
 		ImGui::EndDisabled();
 	}
-	if (should_draw_properties && ids.size() >= selected_id) {
-		if (CURRENT_ID.ID == selected_id_id) draw_properties(properties_to_draw);
+	if (should_draw_button_properties && ids.size() >= selected_id) {
+		if (CURRENT_ID == selected_id_id) draw_properties(button_properties_to_draw);
 		else {
 			should_draw_properties = false;
 			selected_id = -1;
@@ -310,20 +341,99 @@ void draw_editor() {
 		}
 	}
 	ImGui::End();
+	ImGui::PopStyleVar(2);
+}
+
+void draw_id_properties() {
+	static int columns;
+	static int rows;
+	if (set_to_null) {
+		columns = CURRENT_PROFILE.columns;
+		rows = CURRENT_PROFILE.rows;
+		set_to_null = false;
+	}
+	ImGui::OpenPopup("Device Properties");
+	ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+	ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+	if (ImGui::BeginPopupModal("Device Properties", NULL, ImGuiWindowFlags_NoMove |
+														  ImGuiWindowFlags_NoResize)) {
+		ImGui::SetWindowSize(ImVec2(450, 250));
+		ImGui::Text("Properties for "); ImGui::SameLine();
+		ImGui::Text(CURRENT_ID.c_str());
+		ImGui::SeparatorText("General");
+		ImGui::Text("Nickname:"); ImGui::SameLine();
+		ImGui::InputText("##nick", &CURRENT_ID_OBJ.nickname);
+		ImGui::SeparatorText("Layout");
+		// TODO: nickname
+		ImGui::Text("Columns:"); ImGui::SameLine();
+		ImGui::InputInt("##Columns", &CURRENT_PROFILE.columns);
+		if (CURRENT_PROFILE.columns > 20 || CURRENT_PROFILE.columns == 0) CURRENT_PROFILE.columns = columns;
+		ImGui::Text("Rows:"); ImGui::SameLine();
+		ImGui::InputInt("##Rows", &CURRENT_PROFILE.rows);
+		if (CURRENT_PROFILE.rows > 20 || CURRENT_PROFILE.rows == 0) CURRENT_PROFILE.rows = rows;	// TODO: Change to grid size instead
+		if (ImGui::Button("Ok")) {
+			vector<string> to_write;
+			to_write = { CURRENT_ID, "profiles", to_string(CURRENT_ID_OBJ.current_profile), "columns", to_string(CURRENT_PROFILE.columns) };
+			write_config(to_write, to_write.size());
+			to_write = { CURRENT_ID, "profiles", to_string(CURRENT_ID_OBJ.current_profile), "rows", to_string(CURRENT_PROFILE.rows) };
+			write_config(to_write, to_write.size());
+			while (CURRENT_ID_OBJ.locked) {}
+			CURRENT_ID_OBJ.locked = true;
+			int new_grid = CURRENT_PROFILE.columns * CURRENT_PROFILE.rows;
+			int old_grid = columns * rows;
+			if (new_grid > old_grid) {
+				int iter_len = new_grid - CURRENT_PROFILE.buttons.size();
+				for (int i = 0; i < iter_len; ++i) {
+					button button1;
+					CURRENT_PROFILE.buttons.push_back(button1);
+				}
+			} else if (new_grid < old_grid) {
+				vector<button> swapper;
+				int btn_size = CURRENT_PROFILE.buttons.size();
+				for (int i = 0; i < btn_size; ++i) {
+					if (i < new_grid) swapper.push_back(CURRENT_PROFILE.buttons[i]);
+					else clear_button(CURRENT_ID_OBJ.current_profile, 0, i);
+				}
+				CURRENT_PROFILE.buttons.clear();
+				CURRENT_PROFILE.buttons = swapper;
+			}
+			reconfigure(CURRENT_ID_OBJ);
+			CURRENT_ID_OBJ.locked = false;
+			set_to_null = true;
+			should_draw_id_properties = false;
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("Cancel")) {
+			CURRENT_PROFILE.columns = columns;
+			CURRENT_PROFILE.rows = rows;
+			set_to_null = true;
+			should_draw_id_properties = false;
+		}
+		ImGui::EndPopup();
+	}
 }
 
 void draw_main() {
 	ImGuiIO& io = ImGui::GetIO();
-	ImGui::Begin("devicelist", NULL, im_window_flags);
-	ImGui::SetWindowSize(ImVec2(185, io.DisplaySize.y));
+	ImGui::Begin("devices", NULL, im_window_flags);
+	ImGui::SetWindowSize(ImVec2(175, io.DisplaySize.y));	// URGENT: Give more space for scrollbar
 	ImGui::SetWindowPos(ImVec2(0.0f, 0.0f));
 	ImGui::Text("Connected Devices:\n");
-	if (!ids.empty()) {
-		for (int i = 0; i <= ids.size() - 1; i++) {
-			if (ImGui::Selectable((ids[i].ID).c_str(), selected_id == i)) {
-				if (i == 0) selected_id = i;
-				else selected_id = i-1;
-				selected_id_id = ids[selected_id].ID;
+	if (!ids.empty()) {	// TODO: make separate window for text because scorll
+		if (should_draw_id_properties) draw_id_properties();
+		for (int i = 0; i < ids.size(); ++i) {
+			if (ImGui::Selectable(ids[i].c_str(), selected_id == i)) {
+				selected_id = i;
+				selected_id_id = CURRENT_ID;
+			}
+			if (ImGui::BeginPopupContextItem()) {
+				selected_id = i;
+				selected_id_id = CURRENT_ID;
+				if (ImGui::MenuItem("Properties")) should_draw_id_properties = true;
+				if (ImGui::MenuItem("Disconnect")) {
+					closesocket(CURRENT_ID_OBJ.sock.ClientSocket);
+				}
+				ImGui::EndPopup();
 			}
 		}
 	} else { 

@@ -1,122 +1,122 @@
 #include "../include/Header.h"
+#include "../include/Config.h"
+#include "../include/GUI.h"
+#include "../include/Server.h"
 
 int connected_devices = 0;
 int config_send_stage = 0;
 
-bool send_config = false;
-bool button_cleared = false;
+int server_init() {	// make these global
+	sockinfo sock = sock_init();
+	if (sock.iResult != -1) begin_accept_cycle(sock);
+	else {
+		return -1; // todo: Show error message if window not found; add bool bound_sock
+	}
+	closesocket(sock.ClientSocket);
+	WSACleanup();
+	connected_devices = 0;
+	ids.clear();
+	return 0;
+}
+// TODO: Remove socks map and use ID member variables instead. less to clear and keep track of
+sockinfo sock_init() {
+	sockinfo si;
+	ZeroMemory(&si.hints, sizeof(si.hints));
+	if (setup_sock(si)) si.iResult = -1;
+	si.ClientSocket = INVALID_SOCKET;
+	return si;
+}
 
-id::id(string in_ID) : ID(in_ID) {
-
+void begin_accept_cycle(sockinfo& sock) {
+	char* idbuf = nullptr;
+	bool is_valid;
+	vector<std::shared_ptr<thread>> socks;
+	sock.ClientSocket = INVALID_SOCKET;
+	try {
+		idbuf = new char[1024 * 256];
+	} catch (std::bad_alloc) {
+		cerr << "Failed to allocate initial buffer.\n";
+		goto failed_alloc;
+	}
+	if (idbuf == nullptr) {
+		cerr << "Failed to allocate initial buffer.\n";
+		goto failed_alloc;
+	}
+	while (!done) {
+		sockinfo accept_sock = sock;
+		is_valid = accept_socket(accept_sock, idbuf, is_valid);
+		if (!is_valid) { closesocket(accept_sock.ClientSocket); continue; }
+		id ID(idbuf);
+		cerr << "ID: " << ID.ID << "\n";
+		ID.sock = accept_sock;
+		configure_id(ID);
+		id_map.insert({ID.ID, ID});
+		id_map[ID.ID].sock = accept_sock;
+		ids.push_back(ID.ID);
+		socks.push_back(std::make_unique<thread>(comm));
+	}
+failed_alloc:
+	for (auto& sock : socks) sock->join();
+	delete[] idbuf;
 }
 bool id::operator==(const id& other) const {
 	return ID == other.ID;
 }
 vector<id> ids;
 
-int server_init() {
-	WSADATA wsaData;
-	int iResult;
-	int iSendResult = 1;
-	SOCKET ClientSocket = INVALID_SOCKET;
-	SOCKET ListenSocket = INVALID_SOCKET;
-	struct addrinfo hints;
-	ZeroMemory(&hints, sizeof(hints));
-	struct addrinfo* result = NULL;
-
-	if (setup_sock(iResult, wsaData, ListenSocket, ClientSocket, hints, result)) { done = true; return 1; }
-	ClientSocket = INVALID_SOCKET;
-
-	while (ClientSocket == INVALID_SOCKET) ClientSocket = accept(ListenSocket, NULL, NULL);
-	connected_devices++;
-
-	int recvbuflen = 262144;
-	char* buffer = (char*)malloc(sizeof(char) * (1024 * 256));
-	string message;
-	while (!connected_devices) {}
-	u_long mode = 1;
-	ioctlsocket(ClientSocket, FIONBIO, &mode);
-	ioctlsocket(ListenSocket, FIONBIO, &mode);
+void comm() {
+	string ID = ids[connected_devices++];
+	char* buffer = nullptr;
+	try {
+		buffer = new char[1024 * 256];
+	} catch (std::bad_alloc) {
+		cerr << "Failed to allocate memory for ID: " << ID << "\n";
+		goto failed_alloc;
+	}
+	if (buffer == nullptr) {
+		cerr << "Failed to allocate memory for ID: " << ID << "\n";
+		goto failed_alloc;
+	}
 	do {
-		iResult = recv(ClientSocket, buffer, recvbuflen, 0);
-		if (iResult == -1 && (WSAGetLastError() == WSAEWOULDBLOCK || WSAGetLastError() == WSAEINPROGRESS) && send_config)  iResult = 1;
-		if (iResult > 0) {
-			if (!send_config) {
-				cerr << "Bytes received: " << iResult << "\n";
-				message = buffer;
-				cerr << "Message: " << message << "\n";
-				parse_message(message);
-				iSendResult = send(ClientSocket, buffer, iResult, 0);
-			} else {
-				string nxsh_config(getenv("USERPROFILE"));
-				nxsh_config += "\\AppData\\Roaming\\NexusShell\\";
-				nxsh_config += ids[0].ID;
-				nxsh_config += ".json";
-				if (exists(nxsh_config)) {
-					ifstream reader(nxsh_config);
-					json config = json::parse(reader);
-					string configuration = "cfg" + config.dump();
-					cerr << configuration << "\n";
-					iSendResult = send(ClientSocket, configuration.c_str(), configuration.length(), 0);
-				}
-				send_config = false;
-			}
-			if (iSendResult == SOCKET_ERROR) break;
-			else cerr << "Bytes sent: " << iSendResult << "\n";
-		} else if (iResult == -1 && (WSAGetLastError() == WSAEWOULDBLOCK || WSAGetLastError() == WSAEINPROGRESS)) {}
-		else break;
-	} while (iResult > 0 || iSendResult > 0 || !done);
-	free(buffer);
-	iResult = shutdown(ClientSocket, SD_SEND);
-	closesocket(ClientSocket);
-	WSACleanup();
-	connected_devices--;
-	ids.clear();
-	cerr << "------------REBOOTING SOCK------------\n";
-	if (!done) return server_init();
-	return 0;
-}
-
-void read_config(json& config) {	// FIXME: if config file is edited by hand, all this breaks if anything has a trailing comma
-	if (config[config.begin().key()].contains("profiles")) {
-		ids[0].profiles.clear();
-		int profile_count = 0;
-		for (auto& profile : config[config.begin().key()]["profiles"]) if (profile.is_object()) profile_count++;
-		for (int i = 0; i < profile_count; i++) {
-			profile profile1;
-			if (config[config.begin().key()]["profiles"][to_string(i)].contains("columns")) profile1.columns = std::stoi(config[config.begin().key()]["profiles"][to_string(i)]["columns"].get<string>());
-			if (config[config.begin().key()]["profiles"][to_string(i)].contains("rows"))    profile1.rows = std::stoi(config[config.begin().key()]["profiles"][to_string(i)]["rows"].get<string>());
-			if (config[config.begin().key()]["profiles"][to_string(i)].contains("pages")) {
-				int page_count = 0;
-				for (auto& page : config[config.begin().key()]["profiles"][to_string(i)]["pages"]) if (page.is_object()) page_count++;
-				for (int j = 0; j < page_count; j++) {
-					if (config[config.begin().key()]["profiles"][to_string(i)]["pages"][to_string(i)].contains("buttons")) {
-						for (int k = 0; k < profile1.columns * profile1.rows; k++) {
-							button button1;
-							if (config[config.begin().key()]["profiles"][to_string(i)]["pages"]["0"]["buttons"].contains(to_string(k))) {
-								if (config[config.begin().key()]["profiles"][to_string(i)]["pages"]["0"]["buttons"][to_string(k)].contains("label")) button1.label = config[config.begin().key()]["profiles"][to_string(i)]["pages"]["0"]["buttons"][to_string(k)]["label"];
-								button1.label_backup = button1.label;
-								if (config[config.begin().key()]["profiles"][to_string(i)]["pages"]["0"]["buttons"][to_string(k)].contains("has default label")) {
-									if (config[config.begin().key()]["profiles"][to_string(i)]["pages"]["0"]["buttons"][to_string(k)]["has default label"] == "1") button1.default_label = true;
-									else if (config[config.begin().key()]["profiles"][to_string(i)]["pages"]["0"]["buttons"][to_string(k)]["has default label"] == "0") button1.default_label = false;
-									else if ((button1.label == "")) button1.default_label = true;
-									else button1.default_label = false;
-								}
-								if (config[config.begin().key()]["profiles"][to_string(i)]["pages"][to_string(j)]["buttons"][to_string(k)].contains("type")) {
-									if (config[config.begin().key()]["profiles"][to_string(i)]["pages"][to_string(j)]["buttons"][to_string(k)]["type"] == "0") button1.type = button::types::File;
-									else if (config[config.begin().key()]["profiles"][to_string(i)]["pages"][to_string(j)]["buttons"][to_string(k)]["type"] == "1") button1.type = button::types::URL;
-									else if (config[config.begin().key()]["profiles"][to_string(i)]["pages"][to_string(j)]["buttons"][to_string(k)]["type"] == "2") button1.type = button::types::Command;
-									else button1.type = button::types::File; // TODO: (not urgent) add button to problematic value vector and show a modal popup on attempt.
-								}
-								if (config[config.begin().key()]["profiles"][to_string(i)]["pages"]["0"]["buttons"][to_string(k)].contains("action")) button1.action = config[config.begin().key()]["profiles"][to_string(i)]["pages"]["0"]["buttons"][to_string(k)]["action"];
-							}
-							profile1.buttons.push_back(button1);
-						}
-					}
-				}
-			}
-			ids[0].profiles.push_back(profile1);
+		id_map[ID].sock.iResult = recv(id_map[ID].sock.ClientSocket, buffer, 19, 0);
+		if (id_map[ID].sock.iResult > 0) {
+			string message(buffer);
+			while (id_map[ID].locked) {}
+			id_map[ID].locked = true;
+			parse_message(message, id_map[ID]);
+			id_map[ID].locked = false;
 		}
+	} while (!done && id_map[ID].sock.iSendResult > 0 && id_map[ID].sock.iResult > 0);
+	delete[] buffer;
+failed_alloc:
+	closesocket(id_map[ID].sock.ClientSocket);
+	id_map.erase(ID);
+	vector<string> swapper;
+	int ids_size = ids.size();
+	int selected_id_back = selected_id;
+	int id_index = -1;
+	bool incremented = false;
+	while (ids_locked) {}
+	ids_locked = true;
+	selected_id = -1;
+	for (vector<string>::iterator it = ids.begin(); it != ids.end(); ++it) {
+		if (!incremented) ++id_index;
+		if (*it == ID) incremented = true;
+		else swapper.push_back(*it); // Not using vector::erase (or that with std::remove), because it moshes data between objects
+	}
+	cerr << "ID: " << ID << " has disconnected.\n";
+	ids.clear();
+	ids = swapper;
+	if (selected_id_back != id_index && selected_id_back > id_index) {
+		selected_id = selected_id_back;
+	} else if (!selected_id_back && id_index) {
+		selected_id = selected_id_back;
+		should_draw_button_properties = false;
+		should_draw_id_properties = false;
+		clear_dialog_shown = false;
+		button_properties_to_draw = -1;
+	} else {
+		selected_id_id = "";
 	}
 }
 
@@ -149,17 +149,10 @@ void parse_message(string message) {
 	if (message.length() == ID_LENGTH) {
 		try {
 			unsigned long long convert_id = std::stoull(message);
-			stringstream convert_back;
-			string check_id;
-			convert_back << convert_id;
-			convert_back >> check_id;
-			id ID(message);
-			cerr << "ID: " << ID.ID << "\n";
-			if ((check_id.length() == ID_LENGTH) &&
-				!(std::find(ids.begin(), ids.end(), ID.ID) != ids.end())) {
-				ids.push_back(ID);
-				configure_id(&ids[0]);
-			}
+			string check_id = to_string(convert_id);
+			if ((check_id.length() == ID_LENGTH))
+				for (string& temp_id : ids) if (temp_id == check_id) return false;
+				return true;
 		} catch (...) {}
 		return;
 	}

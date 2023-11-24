@@ -14,9 +14,15 @@
 #include <thread>
 #include <string>
 #include <vector>
+<<<<<<< Updated upstream
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
+=======
+#include <unordered_map>
+#include <algorithm>
+
+>>>>>>> Stashed changes
 #include <Windows.h>
 #include <WinUser.h>
 #include <shellapi.h>
