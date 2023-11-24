@@ -120,6 +120,9 @@
     <ClCompile Include="..\imgui\imgui_freetype.cpp">
       <Filter>External Sources\Dear ImGui</Filter>
     </ClCompile>
+    <ClCompile Include="src\Config.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\Header.h">
@@ -145,9 +148,6 @@
     </ClInclude>
     <ClInclude Include="..\NativeFileDIalogs-Extended\include\nfd.hpp">
       <Filter>External Sources\NativeFileDialogs</Filter>
-    </ClInclude>
-    <ClInclude Include="resource.h">
-      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\traypp\include\components\button.hpp">
       <Filter>External Sources\traypp\include\components</Filter>
@@ -196,6 +196,15 @@
     </ClInclude>
     <ClInclude Include="..\imgui\imgui_freetype.h">
       <Filter>External Sources\Dear ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Config.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Server.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="resource.h">
+      <Filter>Resource Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

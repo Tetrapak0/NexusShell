@@ -122,7 +122,7 @@ void reconfigure(id& ID) {
 		} catch (...) {
 			cerr << "Invalid Config\n";
 			reader.close();
-			return;	// TODO: Change all functions that oculd fail to int and return 1
+			return;	// TODO: Change all functions that could fail to int and return 1
 		}
 		reader.close();
 		ID.config = config;
@@ -180,7 +180,7 @@ void clear_button(int profile, int page, int button) {
 	cerr << "cleared\n";
 }
 
-void write_config(vector<string> args, size_t arg_size) {	// TODO: modify ID::config instead of using this.
+void write_config(vector<string> args, size_t arg_size) {	// TODO: modify ID::config and write that instead of this.
 	string nxsh_config(getenv("USERPROFILE"));
 	nxsh_config += "\\AppData\\Roaming\\NexusShell";
 	if (!exists(nxsh_config)) create_directory(nxsh_config);

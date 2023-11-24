@@ -15,7 +15,7 @@
 
 #include "../../imgui/imgui.h"
 #include "../../imgui/imgui_stdlib.h"
-#include "../../imgui/backends/imgui_impl_SDL3.h"
+#include "../../imgui/backends/imgui_impl_sdl3.h"
 #include "../../imgui/backends/imgui_impl_sdlrenderer3.h"
 #include "../../imgui/backends/SDL3/SDL.h"
 
@@ -47,12 +47,21 @@
 	exit(-1);																\
 }
 
+extern bool should_draw_id_properties;
+extern bool should_draw_button_properties;
+extern bool clear_dialog_shown;
+
+extern int button_properties_to_draw;
+extern int selected_id;
+
+extern std::string selected_id_id;
+
 extern int gui_init();
 extern int tray_init();
 
 extern void draw_main();
 
-ImVec4*		set_colors();
+ImVec4* set_colors();
 ImGuiStyle& set_style();
 
 #ifdef _DEBUG

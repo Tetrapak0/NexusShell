@@ -24,6 +24,7 @@ using std::vector;
 using std::ifstream;
 using std::ofstream;
 using std::istreambuf_iterator;
+using std::unordered_map;
 
 using std::filesystem::exists;
 using std::filesystem::remove;
@@ -76,6 +77,7 @@ public:
 	}
 	id operator=(const id& other) {
 		this->config_file = other.config_file;
+		this->sock = other.sock;
 		this->profiles = other.profiles;
 		return this;
 	}
