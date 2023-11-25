@@ -90,7 +90,6 @@ void comm(string ID) {
 	delete[] buffer;
 failed_alloc:
 	closesocket(comm_id.sock.ClientSocket);
-	ids.erase(ID);
 	while (ids_locked) {}
 	ids_locked = true;
 	if (selected_id == ID) {
@@ -100,6 +99,7 @@ failed_alloc:
 		button_properties_to_draw = -1;
 		selected_id = "";
 	}
+	ids.erase(ID);
 	ids_locked = false;
 }
 
