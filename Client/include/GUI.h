@@ -39,19 +39,17 @@
 
 enum class screens { Home, Vol, Media, Spotify };
 
-int gui_init();
+extern int gui_init();
 
-ImVec4*		set_colors();
-ImGuiStyle& set_style();
+extern ImVec4*		set_colors();
+extern ImGuiStyle& set_style();
 
-void draw_main(screens current);
+extern void draw_main(screens current);
 
-void countdown_reconnect();
-
-void draw_home();
-void draw_loading();
-void draw_setup();
-void draw_disconnected_alert();
+extern void draw_home();
+extern void draw_killed();
+extern void draw_setup();
+extern void draw_disconnected_alert();
 
 screens get_default_screen();
 

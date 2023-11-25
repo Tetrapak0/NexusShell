@@ -1,11 +1,10 @@
 #pragma once
 
 #define CURRENT_ID				ids[selected_id]
-#define CURRENT_ID_OBJ			id_map[CURRENT_ID]
-#define CURRENT_PROFILE			id_map[CURRENT_ID].profiles[id_map[CURRENT_ID].current_profile]
+#define CURRENT_PROFILE			CURRENT_ID.profiles[CURRENT_ID.current_profile]
 #define CURRENT_PROFILE_PAR		ID.profiles[ID.current_profile]
 
-#define CURRENT_BUTTON			CURRENT_PROFILE.buttons[index] // TODO: Change this to actual page
+#define CURRENT_BUTTON			CURRENT_PROFILE.buttons[index] // TODO: Change this to actual profile and page
 #define CURRENT_BUTTON_M1_LOOP  CURRENT_PROFILE.buttons[i-1]
 
 #include <filesystem>
@@ -24,7 +23,6 @@ using std::vector;
 using std::ifstream;
 using std::ofstream;
 using std::istreambuf_iterator;
-using std::unordered_map;
 
 using std::filesystem::exists;
 using std::filesystem::remove;
@@ -52,44 +50,42 @@ public:
 
 class id {
 public:
-	int current_profile = 0;
-	bool locked = false;
 	string ID;
 	string nickname;
 	string config_file;
-	json config;
 	sockinfo sock;
+	json config;
 	vector<profile> profiles;
+	int current_profile = 0;
+	bool locked = false;
 	id() {}
 	id(string in_ID) : ID(in_ID) {};
 	id(const id& ID) {
 		this->ID = ID.ID;
+		this->current_profile = ID.current_profile;
+		this->nickname = ID.nickname;
+		this->sock = ID.sock;
 		this->config_file = ID.config_file;
+		this->config = ID.config;
 		this->profiles = ID.profiles;
 	}
 	id(const id* ID) {
 		this->ID = ID->ID;
+		this->current_profile = ID->current_profile;
+		this->nickname = ID->nickname;
+		this->sock = ID->sock;
 		this->config_file = ID->config_file;
+		this->config = ID->config;
 		this->profiles = ID->profiles;
-	}
-	bool operator==(const id& other) const {
-		return this->ID == other.ID;
-	}
-	id operator=(const id& other) {
-		this->config_file = other.config_file;
-		this->sock = other.sock;
-		this->profiles = other.profiles;
-		return this;
 	}
 };
 
-extern unordered_map<string, id> id_map;
-
-extern vector<string> ids;
+extern unordered_map<string, id> ids;
 
 extern bool ids_locked;
+extern bool button_cleared;
 
 extern void clear_button(int profile, int page, int button);
-extern void configure_id(id& ID);
-extern void reconfigure(id& ID);
+extern int configure_id(id& ID);
+extern int reconfigure(id& ID);
 extern void write_config(vector<string> args, size_t arg_size);

@@ -1,6 +1,9 @@
 #include "../include/GUI.h"
 #include "../include/Header.h"
 #include "../include/Config.h"
+#include "../include/Client.h"
+
+// int current_profile = 0; // TODO:
 
 bool done = false;
 bool failed_backup;
@@ -8,10 +11,10 @@ bool run_setup;
 bool hide_failed;
 bool reconfiguring = false;
 
-vector<profile> profiles;
+vector<profile> profiles = {};
 
-ImGuiWindowFlags im_window_flags = 0;
 ImGuiStyle default_style;
+ImGuiWindowFlags im_window_flags = 0;
 
 int gui_init() {
     SDL_Init(SDL_INIT_VIDEO);
@@ -62,8 +65,9 @@ int gui_init() {
         ImGui_ImplSDL3_NewFrame();
         ImGui::NewFrame();
 
-        if (run_setup && !have_ip)                       draw_setup();
-        if (!connected && have_ip || disconnected_modal) draw_disconnected_alert();
+        if (run_setup && !have_ip)                                  draw_setup();
+        if ((!connected && have_ip) && !kill || disconnected_modal) draw_disconnected_alert();
+        if (kill && !connected)                                     draw_killed();
 
         im_window_flags |= ImGuiWindowFlags_NoDecoration
                         |  ImGuiWindowFlags_NoDocking
@@ -140,9 +144,9 @@ ImGuiStyle& set_style(/*style parameters*/) {
 
 void draw_main(screens current) { // TODO: Create window in main to display tabs, close button etc.
     ImGuiIO& io = ImGui::GetIO();
+    ImGui::SetNextWindowSize(ImVec2(io.DisplaySize.x, io.DisplaySize.y));
+    ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
     ImGui::Begin("main", NULL, im_window_flags | ImGuiWindowFlags_NoBringToFrontOnFocus); // Allow performance info to always be on top
-    ImGui::SetWindowSize(ImVec2(io.DisplaySize.x, io.DisplaySize.y));
-    ImGui::SetWindowPos(ImVec2(0.0f, 0.0f));
     switch(current) {
         case screens::Home:
             draw_home();
@@ -150,34 +154,23 @@ void draw_main(screens current) { // TODO: Create window in main to display tabs
     ImGui::End();
 }
 
-void draw_button() {
-
+void draw_button(string label, int index) {
+    ImGuiIO& io = ImGui::GetIO();
+    if (ImGui::Button(label.c_str(), ImVec2((io.DisplaySize.x / profiles[0].columns), 
+                                            (io.DisplaySize.y / profiles[0].rows)))) {
+        string message = SHORTCUT_PREFIX + to_string(index);
+        send_result = send(sock, message.c_str(), message.length() + 1, 0);                            
+    }
 }
 
 void draw_home() {
     ImGuiIO& io = ImGui::GetIO();
     if (!profiles.empty() && !reconfiguring) {
-        for (int i = 1; i <= (profiles[0].columns * profiles[0].rows); i++) {
-            ImGui::BeginDisabled(profiles[0].buttons[i-1].action == "");
-            if (profiles[0].buttons[i-1].default_label) {
-                if (ImGui::Button(to_string(i).c_str(), ImVec2((io.DisplaySize.x / profiles[0].columns), 
-                                                               (io.DisplaySize.y / profiles[0].rows)))) {
-                    string message = SHORTCUT_PREFIX + to_string(i);
-                    sendRes = send(sock, message.c_str(), sizeof(message.c_str()) + 1, 0);
-                }
-            } else if (profiles[0].buttons[i-1].label.empty()){
-                if (ImGui::Button("##", ImVec2((io.DisplaySize.x / profiles[0].columns), 
-                                               (io.DisplaySize.y / profiles[0].rows)))) {
-                    string message = SHORTCUT_PREFIX + to_string(i);
-                    sendRes = send(sock, message.c_str(), sizeof(message.c_str()) + 1, 0);                            
-                }
-            } else {
-                if (ImGui::Button(profiles[0].buttons[i-1].label.c_str(), ImVec2((io.DisplaySize.x / profiles[0].columns), 
-                                                                                 (io.DisplaySize.y / profiles[0].rows)))) {
-                    string message = SHORTCUT_PREFIX + to_string(i);
-                    sendRes = send(sock, message.c_str(), sizeof(message.c_str()) + 1, 0);                            
-                }
-            }
+        for (int i = 1; i <= (profiles[0].columns * profiles[0].rows); ++i) {
+            ImGui::BeginDisabled(profiles[0].buttons[i-1].action.empty());
+            if (profiles[0].buttons[i-1].default_label) draw_button(to_string(i), i);
+            else if (profiles[0].buttons[i-1].label.empty()) draw_button("##", i);
+            else draw_button(profiles[0].buttons[i-1].label, i);
             if (i % profiles[0].columns != 0) ImGui::SameLine();
             ImGui::EndDisabled();
         }
@@ -189,12 +182,12 @@ void draw_home() {
             if (ImGui::BeginPopupModal("Reconfiguring", NULL, im_window_flags)) {
                 ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f), ImGuiCond_Always, ImVec2(0.5f,0.5f));
                 ImGui::SetWindowFontScale(2.0f);
-                ImGui::Text("Reconfiguring...\nOlease Wait");
+                ImGui::Text("Reconfiguring...\nPlease Wait");
                 ImGui::EndPopup();
             }
         }
         ImGui::BeginDisabled();
-        for (int i = 1; i <= 24; i++) {
+        for (int i = 1; i <= 24; ++i) {
             ImGui::Button(to_string(i).c_str(), ImVec2((io.DisplaySize.x / 6), (io.DisplaySize.y / 4)));
             if (i % 6 != 0) ImGui::SameLine();
         }
@@ -207,8 +200,7 @@ screens get_default_screen() {
     return screens::Home;
 }
 
-void draw_setup() {
-    ImGuiIO& io = ImGui::GetIO();
+void set_popup_style() {
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, default_style.ItemSpacing);
     ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, default_style.ItemInnerSpacing);
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, default_style.FramePadding);
@@ -217,44 +209,60 @@ void draw_setup() {
     ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, default_style.ChildBorderSize);
     ImGui::PushStyleVar(ImGuiStyleVar_PopupBorderSize, default_style.PopupBorderSize);
     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, default_style.FrameBorderSize);
+}
+
+void draw_killed() {
+    set_popup_style();
+    ImGui::OpenPopup("Killed");
+    ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+	ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+    if (ImGui::BeginPopupModal("Killed", NULL, im_window_flags)) {
+        ImGui::SetWindowFontScale(2.0f);
+        ImGui::Text("Disconnected.");
+        ImGui::Text(kill_reason.c_str());
+        if (ImGui::Button("Reconnect")) {
+            kill = false;
+            disconnected_modal = true;
+        }
+        ImGui::EndPopup();
+    }
+    ImGui::PopStyleVar(8);
+}
+
+void draw_setup() {
+    set_popup_style();
     ImGui::OpenPopup("Setup", im_window_flags);
+    ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+	ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
     if (ImGui::BeginPopupModal("Setup", NULL, im_window_flags)) {
-        ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f), ImGuiCond_Always, ImVec2(0.5f,0.5f));
         ImGui::SetWindowFontScale(2.0f);
         ImGui::BeginDisabled(failed == failed_backup);
         ImGui::Text("Welcome to NexusShell!");
         ImGui::Separator();
         if (!hide_failed) {
-            if (failed)    ImGui::Text("Connection failed.");
+            if (failed) ImGui::Text("Connection failed.");
             if (connected) run_setup = false;
         }
         ImGui::Text("Server IP address:");
-        ImGui::InputText("##", ip_address, IM_ARRAYSIZE(ip_address));
+        ImGui::InputText("##", ip_address, 16);
         if (ImGui::Button("Connect")) {
             failed        = false;
             failed_backup = false;
             hide_failed   = false;
         }
         ImGui::EndDisabled();
-        // TODO: virtual_keyboard();
         ImGui::EndPopup();
     }
     ImGui::PopStyleVar(8);
 }
 // FIXME: Sluggish font
 void draw_disconnected_alert() {
-    ImGuiIO& io = ImGui::GetIO();
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, default_style.ItemSpacing);
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, default_style.ItemInnerSpacing);
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, default_style.FramePadding);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, default_style.WindowPadding);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, default_style.WindowBorderSize);
-    ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, default_style.ChildBorderSize);
-    ImGui::PushStyleVar(ImGuiStyleVar_PopupBorderSize, default_style.PopupBorderSize);
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, default_style.FrameBorderSize);
+    if (connected) disconnected_modal = false;
+    set_popup_style();
     ImGui::OpenPopup("Disconnected", im_window_flags);
+    ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+	ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
     if (ImGui::BeginPopupModal("Disconnected", NULL, im_window_flags)) {
-        ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f), ImGuiCond_Always, ImVec2(0.5f,0.5f));
         ImGui::SetWindowFontScale(2.0f);
         failed = false;
         ImGui::Text("Disconnected.");

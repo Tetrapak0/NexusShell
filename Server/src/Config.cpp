@@ -1,13 +1,14 @@
 #include "../include/Header.h"
 #include "../include/Config.h"
+#include "../include/GUI.h"
 
 bool button_cleared = false;
 bool ids_locked = false;
 
-unordered_map<string, id> id_map = {};
-vector<string> ids = {};
+unordered_map<string, id> ids = {};
 
 void read_config(json& config, id& ID) {
+	if (config[config.begin().key()].contains("nickname")) ID.nickname = config[config.begin().key()]["nickname"].get<string>();
 	if (config[config.begin().key()].contains("profiles")) {
 		ID.profiles.clear();
 		int profile_count = 0;
@@ -71,7 +72,7 @@ void read_config(json& config, id& ID) {
 	}
 }
 
-void configure_id(id& ID) {
+int configure_id(id& ID) {
 	ID.config_file = getenv("USERPROFILE");
 	ID.config_file += "\\AppData\\Roaming\\NexusShell\\";
 	if (!exists(ID.config_file)) create_directory(ID.config_file);
@@ -83,20 +84,16 @@ void configure_id(id& ID) {
 		if (reader.peek() != ifstream::traits_type::eof()) {
 			try {
 				json config = json::parse(reader);
-				cerr << "here\n";
 				reader.close();
 				read_config(config, ID);
 				reconfigure(ID);
-				cerr << "configured\n";
-				return;
+				cerr << "Configured " << ID.nickname << "\n";
+				return 0;
 			} catch (...) {
-				cerr << "invalid config!\nclearing...\n";		// TODO: Don't clear invalid configs
-				//string to_write = "{\"" + ID.ID + "\": {}}";
-				//json empty_config = json::parse(to_write);
-				//ofstream writer(ID.config_file);
-				//writer << empty_config.dump(4);
-				//writer.close();
-				//reconfigure(ID);
+				cerr << "invalid config!\n";
+				send(ID.sock.ClientSocket, "killreason: invalid config", strlen("killreason: invalid config") + 1, 0);
+				closesocket(ID.sock.ClientSocket);
+				return 1;
 			}
 		}
 		reader.close();
@@ -113,7 +110,7 @@ void configure_id(id& ID) {
 	reconfigure(ID);
 }
 
-void reconfigure(id& ID) {
+int reconfigure(id& ID) {
 	if (exists(ID.config_file)) {
 		ifstream reader(ID.config_file);
 		json config;
@@ -121,11 +118,14 @@ void reconfigure(id& ID) {
 			config = json::parse(reader);
 		} catch (...) {
 			cerr << "Invalid Config\n";
+			send(ID.sock.ClientSocket, "killreason: invalid config", strlen("killreason: invalid config") + 1, 0);
+			closesocket(ID.sock.ClientSocket);
 			reader.close();
-			return;	// TODO: Change all functions that could fail to int and return 1
+			return 1;	// TODO: Change all functions that oculd fail to int and return 1
 		}
 		reader.close();
-		ID.config = config;
+		ID.config = config;	// TODO: use instead;
+		if (config[config.begin().key()].contains("nickname"))	config[config.begin().key()].erase("nickname");
 		for (int i = 0; i < ID.profiles.size(); ++i) {
 			json& profile_store = config[config.begin().key()]["profiles"][to_string(i)];
 			if (profile_store.contains("pages")) {
@@ -151,7 +151,6 @@ void reconfigure(id& ID) {
 		}
 		string configuration = "cfg" + config.dump();
 		ID.sock.iSendResult = send(ID.sock.ClientSocket, configuration.c_str(), configuration.length(), 0);
-		cerr << "here: " << ID.sock.iSendResult << "\n";
 	}
 }
 
@@ -163,24 +162,24 @@ void clear_button(int profile, int page, int button) {
 		return;
 	}
 	nxsh_config += "\\";
-	nxsh_config += CURRENT_ID;
+	nxsh_config += selected_id;
 	nxsh_config += ".json";
 	json to_remove;
 	ifstream reader(nxsh_config);
 	if (reader && reader.peek() != ifstream::traits_type::eof()) to_remove = json::parse(reader);	// FIXME: no if (reader
 	reader.close();
-	if (to_remove[CURRENT_ID]["profiles"][to_string(profile)]["pages"][to_string(page)]["buttons"].contains(to_string(button))) {
-		to_remove[CURRENT_ID]["profiles"][to_string(profile)]["pages"][to_string(page)]["buttons"].erase(to_string(button));
+	if (to_remove[selected_id]["profiles"][to_string(profile)]["pages"][to_string(page)]["buttons"].contains(to_string(button))) {
+		to_remove[selected_id]["profiles"][to_string(profile)]["pages"][to_string(page)]["buttons"].erase(to_string(button));
 		ofstream writer(nxsh_config);
 		writer << to_remove.dump(4);
 		writer.close();
-		read_config(to_remove, id_map[CURRENT_ID]);
+		read_config(to_remove, CURRENT_ID);
 	}
 	button_cleared = true;
 	cerr << "cleared\n";
 }
 
-void write_config(vector<string> args, size_t arg_size) {	// TODO: modify ID::config and write that instead of this.
+void write_config(vector<string> args, size_t arg_size) {	// TODO: modify ID::config instead of using this.
 	string nxsh_config(getenv("USERPROFILE"));
 	nxsh_config += "\\AppData\\Roaming\\NexusShell";
 	if (!exists(nxsh_config)) create_directory(nxsh_config);

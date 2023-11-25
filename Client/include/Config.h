@@ -25,6 +25,28 @@ using json = nlohmann::ordered_json;
 
 extern json config;
 
+extern bool have_ip;
+extern bool reconfiguring;
+
+extern char* homedir;
+
+class button {
+public:
+	string label = "";
+    bool default_label = true;
+	string action;
+};
+
+class profile {
+public: 
+	int	   columns		   = 6;
+	int	   rows			   = 4;
+	int	   current_page    = 0;
+	vector<button> buttons;
+};
+
+extern vector<profile> profiles;
+
 extern const string id_gen();
 extern const string rw_UUID();
 

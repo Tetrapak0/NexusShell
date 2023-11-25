@@ -1,5 +1,12 @@
 #include "../include/Config.h"
 #include "../include/Header.h"
+#include "../include/Client.h"
+
+struct passwd* pw = getpwuid(getuid());
+
+char* homedir = pw->pw_dir;
+
+bool have_ip  = false;
 
 const string id_gen() {
     const unsigned long long min = 100000000000000000;
@@ -14,25 +21,32 @@ const string id_gen() {
 
 const string rw_UUID() {
     string nxsh_dir(homedir);
-    nxsh_dir += "/.config/NexusShell";
+    nxsh_dir += "/.config";
+    if (!exists(nxsh_dir)) create_directory(nxsh_dir);
+    nxsh_dir += "/NexusShell";
     string uuid_path = nxsh_dir + "/UUID";
     if (!exists(uuid_path)) {
         if (!exists(nxsh_dir)) create_directory(nxsh_dir);
         const string id = id_gen();
         ofstream uuid_file(uuid_path);
         uuid_file << id;
+        uuid_file.close();
         return id;
     } else {
         ifstream uuid_file(uuid_path);
-        const string id((istreambuf_iterator<char>(uuid_file)), 
-                                (istreambuf_iterator<char>()));
+        char idbuf[19];
+        uuid_file.getline(idbuf, 19);
+        const string id(idbuf);
+        uuid_file.close();
         return id;
     }
 }
 
 bool rw_ipstore() {
     string nxsh_config(homedir);
-    nxsh_config += "/.config/NexusShell";
+    nxsh_config += "/.config";
+    if (!exists(nxsh_config)) create_directory(nxsh_config);
+    nxsh_config += "/NexusShell";
     if (!exists(nxsh_config)) create_directory(nxsh_config);
     nxsh_config += "/ipstore";
     if (exists(nxsh_config)) {
@@ -42,7 +56,7 @@ bool rw_ipstore() {
         ip_reader.close();
         if (!read_ip.empty()) {
             strncpy(ip_address, read_ip.c_str(), read_ip.length());
-            failed = false;
+            if (!kill) failed = false;
             return true;
         }
     }
@@ -60,7 +74,10 @@ void remove_ipstore() {
 
 void check_config() {
     string nxsh_config(homedir);
-    nxsh_config += "/.config/NexusShell/config.json";
+    nxsh_config += "/.config";
+    if (!exists(nxsh_config)) create_directory(nxsh_config);
+    nxsh_config += "/NexusShell";
+    nxsh_config += "/config.json";
     if (exists(nxsh_config)) {
         ifstream reader(nxsh_config);
         if (reader.peek() != ifstream::traits_type::eof()) {
@@ -76,13 +93,15 @@ void check_config() {
 void clear_config() {
     cerr << "here\n";
     string nxsh_config(homedir);
-    nxsh_config += "/.config/NexusShell";
+    nxsh_config += "/.config";
+    if (!exists(nxsh_config)) create_directory(nxsh_config);
+    nxsh_config += "/NexusShell";
 	if (!exists(nxsh_config)) create_directory(nxsh_config);
     nxsh_config += "/config.json";
     ofstream writer(nxsh_config);
     profiles.clear();
     profile profile1;
-    for (int i = 1; i <= profile1.columns * profile1.rows; i++) {
+    for (int i = 1; i <= profile1.columns * profile1.rows; ++i) {
         button button1;
         profile1.buttons.push_back(button1);
     }
@@ -92,7 +111,9 @@ void clear_config() {
 
 void write_config(string recvd_config) {
 	string nxsh_config(homedir);
-    nxsh_config += "/.config/NexusShell";
+    nxsh_config += "/.config";
+    if (!exists(nxsh_config)) create_directory(nxsh_config);
+    nxsh_config += "/NexusShell";
 	if (!exists(nxsh_config)) create_directory(nxsh_config);
     nxsh_config += "/config.json";
     config = json::parse(recvd_config);
@@ -108,7 +129,7 @@ void set_properties() {
     if (config[config.begin().key()].contains("profiles")) {
         int profile_count = 0;
         for (auto& profile : config[config.begin().key()]["profiles"]) if (profile.is_object()) profile_count++;
-        for (int i = 0; i < profile_count; i++) {
+        for (int i = 0; i < profile_count; ++i) {
             profile profile1;
             json profile_store = config[config.begin().key()]["profiles"][to_string(i)];
             if (profile_store.contains("columns")) profile1.columns = std::stoi(profile_store["columns"].get<string>());
@@ -116,10 +137,10 @@ void set_properties() {
             if (profile_store.contains("pages")) {
                 int page_count = 0;
                 for (auto& page : profile_store["pages"]) if (page.is_object()) page_count++;
-                for (int j = 0; j < page_count; j++) {
+                for (int j = 0; j < page_count; ++j) {
                     json page_store = profile_store["pages"][to_string(j)];
                     if (page_store.contains("buttons")) {
-                        for (int k = 0; k < profile1.columns * profile1.rows; k++) {
+                        for (int k = 0; k < profile1.columns * profile1.rows; ++k) {
                             button button1;
                             if (page_store["buttons"].contains(to_string(k))) {
                                 json button_store = page_store["buttons"][to_string(k)];

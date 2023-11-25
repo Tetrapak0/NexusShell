@@ -4,7 +4,6 @@
 #include "../include/Server.h"
 
 int connected_devices = 0;
-int config_send_stage = 0;
 
 int server_init() {	// make these global
 	sockinfo sock = sock_init();
@@ -49,11 +48,9 @@ void begin_accept_cycle(sockinfo& sock) {
 		id ID(idbuf);
 		cerr << "ID: " << ID.ID << "\n";
 		ID.sock = accept_sock;
-		configure_id(ID);
-		id_map.insert({ID.ID, ID});
-		id_map[ID.ID].sock = accept_sock;
-		ids.push_back(ID.ID);
-		socks.push_back(std::make_unique<thread>(comm));
+		if (configure_id(ID)) continue;
+		ids.insert({ID.ID, ID});
+		socks.push_back(std::make_unique<thread>(comm, ID.ID));
 	}
 failed_alloc:
 	for (auto& sock : socks) sock->join();
@@ -67,9 +64,9 @@ int accept_socket(sockinfo& sock, char* idbuf, bool& id_valid) {
 	return false;
 }
 
-void comm() {
-	string ID = ids[connected_devices++];
+void comm(string ID) {
 	char* buffer = nullptr;
+	id& comm_id = ids[ID];
 	try {
 		buffer = new char[1024 * 256];
 	} catch (std::bad_alloc) {
@@ -81,48 +78,30 @@ void comm() {
 		goto failed_alloc;
 	}
 	do {
-		id_map[ID].sock.iResult = recv(id_map[ID].sock.ClientSocket, buffer, 19, 0);
-		if (id_map[ID].sock.iResult > 0) {
+		comm_id.sock.iResult = recv(comm_id.sock.ClientSocket, buffer, 19, 0);
+		if (comm_id.sock.iResult > 0) {
 			string message(buffer);
-			while (id_map[ID].locked) {}
-			id_map[ID].locked = true;
-			parse_message(message, id_map[ID]);
-			id_map[ID].locked = false;
+			while (comm_id.locked) {}
+			comm_id.locked = true;
+			parse_message(message, comm_id);
+			comm_id.locked = false;
 		}
-	} while (!done && id_map[ID].sock.iSendResult > 0 && id_map[ID].sock.iResult > 0);
+	} while (!done && comm_id.sock.iSendResult > 0 && comm_id.sock.iResult > 0);
 	delete[] buffer;
 failed_alloc:
-	closesocket(id_map[ID].sock.ClientSocket);
-	id_map.erase(ID);
-	vector<string> swapper;
-	int ids_size = ids.size();
-	int selected_id_back = selected_id;
-	int id_index = -1;
-	bool incremented = false;
+	closesocket(comm_id.sock.ClientSocket);
+	ids.erase(ID);
 	while (ids_locked) {}
 	ids_locked = true;
-	selected_id = -1;
-	for (vector<string>::iterator it = ids.begin(); it != ids.end(); ++it) {
-		if (!incremented) ++id_index;
-		if (*it == ID) incremented = true;
-		else swapper.push_back(*it); // Not using vector::erase (or that with std::remove), because it moshes data between objects
-	}
-	cerr << "ID: " << ID << " has disconnected.\n";
-	ids.clear();
-	ids = swapper;
-	if (selected_id_back != id_index && selected_id_back > id_index) {
-		selected_id = selected_id_back;
-	} else if (!selected_id_back && id_index) {
-		selected_id = selected_id_back;
+	if (selected_id == ID) {
+		clear_dialog_shown = false;
 		should_draw_button_properties = false;
 		should_draw_id_properties = false;
-		clear_dialog_shown = false;
 		button_properties_to_draw = -1;
-	} else {
-		selected_id_id = "";
+		selected_id = "";
 	}
+	ids_locked = false;
 }
-
 
 bool is_id(string message) {
 	if (message.length() == ID_LENGTH) {
@@ -130,7 +109,7 @@ bool is_id(string message) {
 			unsigned long long convert_id = std::stoull(message);
 			string check_id = to_string(convert_id);
 			if ((check_id.length() == ID_LENGTH))
-				for (string& temp_id : ids) if (temp_id == check_id) return false;
+				for (unordered_map<string, id>::iterator it = ids.begin(); it != ids.end(); ++it) if (it->first == check_id) return false;
 			return true;
 		} catch (...) {}
 	}
@@ -152,11 +131,11 @@ void parse_message(string& message, id& ID) {
 			wchar_t* wchar_action = (wchar_t*)wstring_action.c_str();
 
 			switch (ID.profiles[0].buttons[pos].type) {
-			case button::types::Directory:
-				ShellExecute(NULL, L"explore", wchar_action, NULL, NULL, SW_SHOW);
-				break;
-			default:
-				ShellExecute(NULL, L"open", wchar_action, NULL, NULL, SW_SHOW);
+				case button::types::Directory:
+					ShellExecute(NULL, L"explore", wchar_action, NULL, NULL, SW_SHOW);
+					break;
+				default:
+					ShellExecute(NULL, L"open", wchar_action, NULL, NULL, SW_SHOW);
 			}
 		}
 		return;

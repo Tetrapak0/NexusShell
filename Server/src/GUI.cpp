@@ -2,17 +2,17 @@
 #include "../include/Header.h"
 #include "../include/Config.h"
 
-bool done		   					= false;
-bool should_draw_button_properties	= false;
-bool should_draw_id_properties		= false;
-bool set_to_null					= true;
-//bool bad_property					= false;
-bool clear_dialog_shown				= false;
+bool done		   				   = false;
+bool should_draw_button_properties = false;
+bool should_draw_id_properties     = false;
+bool set_to_null				   = true;
+//bool bad_property				   = false;
+bool clear_dialog_shown			   = false;
+bool press_ok					   = false;
 
 int button_properties_to_draw;
-int selected_id = -1;
 
-string selected_id_id = "";
+string selected_id = "";
 
 ImGuiWindowFlags im_window_flags = 0;
 
@@ -21,7 +21,7 @@ ImGuiWindowFlags im_window_flags = 0;
 int gui_init() {
 	SDL_Init(SDL_INIT_VIDEO);
 	SDL_SetHint(SDL_HINT_IME_SHOW_UI, "1");
-	SDL_Window* window = SDL_CreateWindow("NexusShell", 1280, 720, SDL_WINDOW_OPENGL    |
+	SDL_Window* window = SDL_CreateWindow("NexusShell", 1280, 720, SDL_WINDOW_OPENGL  |
 																 SDL_WINDOW_RESIZABLE |
 																 SDL_WINDOW_HIDDEN   );
 	if (window == nullptr) SDL_ERROR("window")
@@ -129,43 +129,42 @@ ImVec4* set_colors(/*theme parameters*/) {
 }
 // TODO: custom themes and styles
 ImGuiStyle& set_style(/*style parameters*/) {
-	ImGuiStyle& style				= ImGui::GetStyle();
-	style.ItemSpacing				= ImVec2(0.0f, 0.0f);
-	style.ItemInnerSpacing			= ImVec2(0.0f, 0.0f);
-	style.GrabMinSize				= 10;
-	style.WindowBorderSize			= 0;
-	style.ChildBorderSize			= 0;
-	style.PopupBorderSize			= 0;
-	style.FrameBorderSize			= 0;
-	style.TabBorderSize				= 0;
-	style.LogSliderDeadzone			= 4;
+	ImGuiStyle& style		= ImGui::GetStyle();
+	style.ItemSpacing		= ImVec2(0.0f, 0.0f);
+	style.ItemInnerSpacing	= ImVec2(0.0f, 0.0f);
+	style.GrabMinSize		= 10;
+	style.WindowBorderSize	= 0;
+	style.ChildBorderSize	= 0;
+	style.PopupBorderSize	= 0;
+	style.FrameBorderSize	= 0;
+	style.TabBorderSize		= 0;
+	style.LogSliderDeadzone = 4;
 
 	return style;
 }
 
 int tray_init() {
-#ifdef _WIN32
-	Tray::Tray tray("NexusShell", "..\\..\\icon.ico");
-#else 
-	Tray::Tray tray("NexusShell", "../../icon.ico");
-#endif
+	Tray::Tray tray("NexusShell", "icon.ico");
 	tray.addEntry(Tray::Button("Show Window\0", [&] { ShowWindow(FindWindow(NULL, L"NexusShell"), SW_NORMAL);
 													  SetFocus(FindWindow(NULL, L"NexusShell")); }));
 	tray.addEntry(Tray::Separator());
-	tray.addEntry(Tray::Button("Exit\0", [&] {done = true; tray.exit();}));
+	tray.addEntry(Tray::Button("Exit\0", [&] {done = true; 	tray.exit();}));
 	tray.run();
+	exit(0);
 	return 0;
 }
 
 void clear_dialog() {
 	clear_dialog_shown = true;
-	ImGui::OpenPopup("Clear Button?");
-	if (ImGui::BeginPopupModal("Clear Button?", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
+	ImGui::OpenPopup("Are you sure?");
+	ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+	ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+	if (ImGui::BeginPopupModal("Are you sure?", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
 		ImGui::Text("Are you sure you want to\nclear this item?");
 		ImGui::Text("There is no going back!");
 		if (ImGui::Button("Yes")) {
-			clear_button(CURRENT_ID_OBJ.current_profile, 0, button_properties_to_draw);
-			reconfigure(CURRENT_ID_OBJ);
+			clear_button(CURRENT_ID.current_profile, 0, button_properties_to_draw);
+			reconfigure(CURRENT_ID);
 			clear_dialog_shown = false;
 		}
 		ImGui::SameLine();
@@ -181,14 +180,14 @@ string browse(int type) {
 	nfdchar_t* outPath = nullptr;
 	nfdresult_t result;
 	switch (type) {
-	case 0: {
-		nfdfilteritem_t filterItem[] = { {"All Files", "*" } };
-		result = NFD_OpenDialog(&outPath, filterItem, 1, NULL);
-		break;
-	}
-	case 1:
-		result = NFD_PickFolder(&outPath, NULL);
-		break;
+		case 0: {
+			nfdfilteritem_t filterItem[] = { {"All Files", "*" } };
+			result = NFD_OpenDialog(&outPath, filterItem, 1, NULL);
+			break;
+		}
+		case 1: 
+			result = NFD_PickFolder(&outPath, NULL);
+			break;
 	}
 	NFD_Quit();
 	if (result == NFD_OKAY) return outPath;
@@ -197,7 +196,7 @@ string browse(int type) {
 
 void draw_properties(int index) {
 	ImGui::OpenPopup("Button Properties");
-	const char* types[] = { "File", "URL", "Command" , "Directory" };
+	const char* types[] = { "File", "URL", "Command" , "Directory"};
 	static int original_type;
 	static string original_action;	// TODO: switch to wide strings
 	if (button_cleared) set_to_null = true;
@@ -211,8 +210,8 @@ void draw_properties(int index) {
 	}
 	ImVec2 center = ImGui::GetMainViewport()->GetCenter();
 	ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-	if (ImGui::BeginPopupModal("Button Properties", NULL, ImGuiWindowFlags_NoResize |
-		ImGuiWindowFlags_NoMove)) {
+	if (ImGui::BeginPopupModal("Button Properties", NULL, ImGuiWindowFlags_NoResize | 
+														   ImGuiWindowFlags_NoMove)) {
 		if (clear_dialog_shown) clear_dialog();
 		ImGui::SetWindowSize(ImVec2(450, 250));
 		ImGui::Text("Button ID: "); ImGui::SameLine(); ImGui::Text(to_string(index).c_str());
@@ -228,40 +227,40 @@ void draw_properties(int index) {
 			ImGui::EndCombo();
 		}
 		switch (original_type) {
-		case button::types::File: {
-			ImGui::Text("File:"); ImGui::SameLine();
-			ImGui::InputText("##Action", &original_action);
-			ImGui::SameLine();
-			if (ImGui::Button("Browse")) original_action = browse(0);
-			break;
-		}
-		case button::types::URL: {
-			ImGui::Text("URL:"); ImGui::SameLine();
-			ImGui::InputText("##Action", &original_action);
-			ImGui::SameLine(); ImGui::TextDisabled("(Not working?)");
-			if (ImGui::BeginItemTooltip()) {
-				ImGui::TextUnformatted("URL not working?\n\nYou must prepend https://, http://, git://, \nor any other protocol scheme to the URL.");
-				ImGui::EndTooltip();
+			case button::types::File: {
+				ImGui::Text("File:"); ImGui::SameLine();
+				ImGui::InputText("##Action", &original_action);
+				ImGui::SameLine();
+				if (ImGui::Button("Browse")) original_action = browse(0);
+				break;
 			}
-			break;
-		}
-		case button::types::Command: {
-			ImGui::Text("Command:"); ImGui::SameLine();
-			ImGui::InputText("##Action", &original_action);
-			break;
-		}
-		case button::types::Directory: {
-			ImGui::Text("Directory:"); ImGui::SameLine();
-			ImGui::InputText("##Action", &original_action);
-			ImGui::SameLine();
-			if (ImGui::Button("Browse")) original_action = browse(1);
-			break;
-		}
+			case button::types::URL: {
+				ImGui::Text("URL:"); ImGui::SameLine();
+				ImGui::InputText("##Action", &original_action);
+				ImGui::SameLine(); ImGui::TextDisabled("(Not working?)");
+				if (ImGui::BeginItemTooltip()) {
+					ImGui::TextUnformatted("URL not working?\n\nYou must prepend https://, http://, git://, \nor any other protocol scheme to the URL.");
+					ImGui::EndTooltip();
+				}
+				break;
+			}
+			case button::types::Command: {
+				ImGui::Text("Command:"); ImGui::SameLine();
+				ImGui::InputText("##Action", &original_action);
+				break;
+			}
+			case button::types::Directory: {
+				ImGui::Text("Directory:"); ImGui::SameLine();
+				ImGui::InputText("##Action", &original_action);
+				ImGui::SameLine();
+				if (ImGui::Button("Browse")) original_action = browse(1);
+				break;
+			}
 		}
 		ImGui::BeginDisabled(original_action == "");
 		if (ImGui::Button("OK")) {
-			while (CURRENT_ID_OBJ.locked) {}
-			CURRENT_ID_OBJ.locked = true;
+			while (CURRENT_ID.locked) {}
+			CURRENT_ID.locked = true;
 			if (CURRENT_BUTTON.label_backup != CURRENT_BUTTON.label) {
 				CURRENT_BUTTON.default_label = false;
 				CURRENT_BUTTON.label_backup = CURRENT_BUTTON.label;
@@ -273,16 +272,16 @@ void draw_properties(int index) {
 			set_to_null = true;
 			should_draw_button_properties = false;
 			vector<string> to_write;
-			to_write = { CURRENT_ID, "profiles", to_string(CURRENT_ID_OBJ.current_profile), "pages", to_string(CURRENT_PROFILE.current_page), "buttons", to_string(button_properties_to_draw), "label", CURRENT_BUTTON.label };
+			to_write = { selected_id, "profiles", to_string(CURRENT_ID.current_profile), "pages", to_string(CURRENT_PROFILE.current_page), "buttons", to_string(button_properties_to_draw), "label", CURRENT_BUTTON.label };
 			write_config(to_write, to_write.size());
-			to_write = { CURRENT_ID, "profiles", to_string(CURRENT_ID_OBJ.current_profile), "pages", to_string(CURRENT_PROFILE.current_page), "buttons", to_string(button_properties_to_draw), "has default label", to_string(CURRENT_BUTTON.default_label) };
+			to_write = { selected_id, "profiles", to_string(CURRENT_ID.current_profile), "pages", to_string(CURRENT_PROFILE.current_page), "buttons", to_string(button_properties_to_draw), "has default label", to_string(CURRENT_BUTTON.default_label) };
 			write_config(to_write, to_write.size());
-			to_write = { CURRENT_ID, "profiles", to_string(CURRENT_ID_OBJ.current_profile), "pages", to_string(CURRENT_PROFILE.current_page), "buttons", to_string(button_properties_to_draw), "type", to_string(CURRENT_BUTTON.type) };
+			to_write = { selected_id, "profiles", to_string(CURRENT_ID.current_profile), "pages", to_string(CURRENT_PROFILE.current_page), "buttons", to_string(button_properties_to_draw), "type", to_string(CURRENT_BUTTON.type) };
 			write_config(to_write, to_write.size());
-			to_write = { CURRENT_ID, "profiles", to_string(CURRENT_ID_OBJ.current_profile), "pages", to_string(CURRENT_PROFILE.current_page), "buttons", to_string(button_properties_to_draw), "action", CURRENT_BUTTON.action };
+			to_write = { selected_id, "profiles", to_string(CURRENT_ID.current_profile), "pages", to_string(CURRENT_PROFILE.current_page), "buttons", to_string(button_properties_to_draw), "action", CURRENT_BUTTON.action };
 			write_config(to_write, to_write.size());
-			reconfigure(CURRENT_ID_OBJ);
-			CURRENT_ID_OBJ.locked = false;
+			reconfigure(CURRENT_ID);
+			CURRENT_ID.locked = false;
 		}
 		ImGui::EndDisabled();
 		ImGui::SameLine();
@@ -301,7 +300,7 @@ void draw_properties(int index) {
 void draw_button(string label, int index) {
 	ImGuiIO& io = ImGui::GetIO();
 	float x_size = io.DisplaySize.x - 175;
-	if (selected_id != -1) {
+	if (selected_id != "") {
 		if (ImGui::Button(label.c_str(), ImVec2(x_size / CURRENT_PROFILE.columns,
 			io.DisplaySize.y / CURRENT_PROFILE.rows))) {
 			draw_properties(index - 1);
@@ -310,14 +309,16 @@ void draw_button(string label, int index) {
 		}
 	} else ImGui::Button(std::to_string(index).c_str(), ImVec2(x_size / 6, io.DisplaySize.y / 4));
 }
-// FIXME: Occasional thread crash. Rare, yet is present.
+// FIXME: Occasional thread crash on disconnect. Extremely rare, but present.
 void draw_editor() {
 	ImGuiIO& io = ImGui::GetIO();
+	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 0.0f));
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 	float x_size = io.DisplaySize.x - 175;
+	ImGui::SetNextWindowSize(ImVec2(x_size, io.DisplaySize.y));
+	ImGui::SetNextWindowPos(ImVec2(176.0f, 0.0f));
 	ImGui::Begin("editor", NULL, im_window_flags);
-	ImGui::SetWindowSize(ImVec2(x_size, io.DisplaySize.y));
-	ImGui::SetWindowPos(ImVec2(176.0f, 0.0f));
-	if (selected_id != -1) {
+	if (selected_id != "") {
 		for (int i = 1; i <= CURRENT_PROFILE.columns * CURRENT_PROFILE.rows; ++i) {
 			while (ids_locked) {}
 			ids_locked = true;
@@ -337,12 +338,12 @@ void draw_editor() {
 		}
 		ImGui::EndDisabled();
 	}
-	if (should_draw_button_properties && ids.size() >= selected_id) {
-		if (CURRENT_ID == selected_id_id) draw_properties(button_properties_to_draw);
+	ImGui::PopStyleVar(2);
+	if (should_draw_button_properties && ids.count(selected_id)) {
+		if (CURRENT_ID.ID == selected_id) draw_properties(button_properties_to_draw);
 		else {
 			should_draw_button_properties = false;
-			selected_id = -1;
-			selected_id_id = "";
+			selected_id = "";
 		}
 	}
 	ImGui::End();
@@ -363,26 +364,29 @@ void draw_id_properties() {
 														  ImGuiWindowFlags_NoResize)) {
 		ImGui::SetWindowSize(ImVec2(450, 250));
 		ImGui::Text("Properties for "); ImGui::SameLine();
-		ImGui::Text(CURRENT_ID.c_str());
+		ImGui::Text(selected_id.c_str());
 		ImGui::SeparatorText("General");
 		ImGui::Text("Nickname:"); ImGui::SameLine();
-		ImGui::InputText("##nick", &CURRENT_ID_OBJ.nickname);
+		ImGui::InputText("##nickname", &CURRENT_ID.nickname);
 		ImGui::SeparatorText("Layout");
-		// TODO: nickname
-		ImGui::Text("Columns:"); ImGui::SameLine();
+		ImGui::Text("Columns:"); ImGui::SameLine(); 
 		ImGui::InputInt("##Columns", &CURRENT_PROFILE.columns);
-		if (CURRENT_PROFILE.columns > 20 || CURRENT_PROFILE.columns == 0) CURRENT_PROFILE.columns = columns;
-		ImGui::Text("Rows:"); ImGui::SameLine();
+		ImGui::Text("Rows:"); ImGui::SameLine(); 
 		ImGui::InputInt("##Rows", &CURRENT_PROFILE.rows);
-		if (CURRENT_PROFILE.rows > 20 || CURRENT_PROFILE.rows == 0) CURRENT_PROFILE.rows = rows;	// TODO: Change to grid size instead
+		if (CURRENT_PROFILE.columns * CURRENT_PROFILE.rows > 400) {
+			CURRENT_PROFILE.columns = columns;
+			CURRENT_PROFILE.rows = rows;
+		}
 		if (ImGui::Button("Ok")) {
 			vector<string> to_write;
-			to_write = { CURRENT_ID, "profiles", to_string(CURRENT_ID_OBJ.current_profile), "columns", to_string(CURRENT_PROFILE.columns) };
+			to_write = { selected_id, "nickname", CURRENT_ID.nickname };
 			write_config(to_write, to_write.size());
-			to_write = { CURRENT_ID, "profiles", to_string(CURRENT_ID_OBJ.current_profile), "rows", to_string(CURRENT_PROFILE.rows) };
+			to_write = { selected_id, "profiles", to_string(CURRENT_ID.current_profile), "columns", to_string(CURRENT_PROFILE.columns) };
 			write_config(to_write, to_write.size());
-			while (CURRENT_ID_OBJ.locked) {}
-			CURRENT_ID_OBJ.locked = true;
+			to_write = { selected_id, "profiles", to_string(CURRENT_ID.current_profile), "rows", to_string(CURRENT_PROFILE.rows) };
+			write_config(to_write, to_write.size());
+			while (CURRENT_ID.locked) {}
+			CURRENT_ID.locked = true;
 			int new_grid = CURRENT_PROFILE.columns * CURRENT_PROFILE.rows;
 			int old_grid = columns * rows;
 			if (new_grid > old_grid) {
@@ -396,13 +400,13 @@ void draw_id_properties() {
 				int btn_size = CURRENT_PROFILE.buttons.size();
 				for (int i = 0; i < btn_size; ++i) {
 					if (i < new_grid) swapper.push_back(CURRENT_PROFILE.buttons[i]);
-					else clear_button(CURRENT_ID_OBJ.current_profile, 0, i);
+					else clear_button(CURRENT_ID.current_profile, 0, i);
 				}
 				CURRENT_PROFILE.buttons.clear();
 				CURRENT_PROFILE.buttons = swapper;
 			}
-			reconfigure(CURRENT_ID_OBJ);
-			CURRENT_ID_OBJ.locked = false;
+			reconfigure(CURRENT_ID);
+			CURRENT_ID.locked = false;
 			set_to_null = true;
 			should_draw_id_properties = false;
 		}
@@ -419,29 +423,33 @@ void draw_id_properties() {
 
 void draw_main() {
 	ImGuiIO& io = ImGui::GetIO();
+	ImGui::SetNextWindowSize(ImVec2(175, io.DisplaySize.y));
+	ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
 	ImGui::Begin("devices", NULL, im_window_flags);
-	ImGui::SetWindowSize(ImVec2(175, io.DisplaySize.y));	// URGENT: Give more space for scrollbar
-	ImGui::SetWindowPos(ImVec2(0.0f, 0.0f));
 	ImGui::Text("Connected Devices:\n");
-	if (!ids.empty()) {	// TODO: make separate window for text because scorll
+	if (!ids.empty()) {
 		if (should_draw_id_properties) draw_id_properties();
-		for (int i = 0; i < ids.size(); ++i) {
-			if (ImGui::Selectable(ids[i].c_str(), selected_id == i)) {
-				selected_id = i;
-				selected_id_id = CURRENT_ID;
+		for (unordered_map<string, id>::iterator it = ids.begin(); it != ids.end(); ++it) {
+			if (it->second.nickname.empty()) {
+				if (ImGui::Selectable(it->first.c_str(), selected_id == it->first))
+					selected_id = it->first;
+			} else {
+				if (ImGui::Selectable(it->second.nickname.c_str(), selected_id == it->first))
+					selected_id = it->first;
 			}
 			if (ImGui::BeginPopupContextItem()) {
-				selected_id = i;
-				selected_id_id = CURRENT_ID;
+				selected_id = it->first;
 				if (ImGui::MenuItem("Properties")) should_draw_id_properties = true;
 				if (ImGui::MenuItem("Disconnect")) {
-					closesocket(CURRENT_ID_OBJ.sock.ClientSocket);
+					send(CURRENT_ID.sock.ClientSocket, "killreason: disconnected by user", strlen("killreason: disconnected by user")+1, 0);
+					closesocket(CURRENT_ID.sock.ClientSocket);
+					selected_id = "";
 				}
 				ImGui::EndPopup();
 			}
 		}
 	} else { 
-		selected_id = -1;
+		selected_id = "";
 		ImGui::Text("None"); 
 	}
 	ImGui::End();

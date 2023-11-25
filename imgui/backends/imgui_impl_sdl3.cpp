@@ -105,10 +105,10 @@ void ImGui_ImplSDL3_WaitForEvent() {
 
     Uint32 window_flags = SDL_GetWindowFlags(bd->Window);
     bool window_is_hidden = window_flags & (SDL_WINDOW_HIDDEN | SDL_WINDOW_MINIMIZED);
-    double waiting_time = window_is_hidden ? INFINITY : 0.5;
+    double waiting_time = window_is_hidden ? INFINITY : 0.1;
     if (waiting_time > 0.0) {
         if (isinf(waiting_time)) SDL_WaitEvent(NULL);
-        else SDL_WaitEventTimeout(NULL, 500);
+        else SDL_WaitEventTimeout(NULL, 100);
     }
 }
 

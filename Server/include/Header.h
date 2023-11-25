@@ -30,7 +30,3 @@ using std::unordered_map;
 using std::to_string;
 
 extern bool done;
-extern bool button_cleared;
-
-extern int selected_id;
-extern int connected_devices;
