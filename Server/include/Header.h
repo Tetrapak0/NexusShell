@@ -8,7 +8,7 @@
 #include <thread>
 #include <string>
 #include <vector>
-#include <iomanip>
+#include <unordered_map>
 
 #include <Windows.h>
 #include <WinUser.h>
@@ -25,7 +25,7 @@ using std::cerr;
 using std::string;
 using std::vector;
 using std::thread;
-using std::stringstream;
+using std::unordered_map;
 
 using std::to_string;
 

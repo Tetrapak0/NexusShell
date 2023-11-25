@@ -1,8 +1,11 @@
 #pragma once
 
 #define CURRENT_ID				ids[selected_id]
-#define CURRENT_BUTTON			CURRENT_ID.profiles[0].buttons[index] // TODO: Change this to actual profile and page
-#define CURRENT_BUTTON_M1_LOOP  CURRENT_ID.profiles[0].buttons[i-1]
+#define CURRENT_PROFILE			CURRENT_ID.profiles[CURRENT_ID.current_profile]
+#define CURRENT_PROFILE_PAR		ID.profiles[ID.current_profile]
+
+#define CURRENT_BUTTON			CURRENT_PROFILE.buttons[index] // TODO: Change this to actual profile and page
+#define CURRENT_BUTTON_M1_LOOP  CURRENT_PROFILE.buttons[i-1]
 
 #include <filesystem>
 #include <fstream>
@@ -25,6 +28,8 @@ using std::filesystem::exists;
 using std::filesystem::remove;
 using std::filesystem::create_directory;
 
+using json = nlohmann::ordered_json;
+
 class button {
 public:
 	string label = "";
@@ -37,18 +42,19 @@ public:
 
 class profile {
 public:
-	int	   columns = 6;
-	int	   rows = 4;
-	int	   current_page = 0;
+	int	columns = 6;
+	int	rows = 4;
+	int	current_page = 0;
 	vector<button> buttons;
 };
 
 class id {
 public:
+	int current_profile = 0;
 	bool locked = false;
 	string ID;
 	string config_file;
-	sockinfo sock;
+	json config;
 	vector<profile> profiles;
 	id() {}
 	id(string in_ID) : ID(in_ID) {};
@@ -67,7 +73,6 @@ public:
 	}
 	id operator=(const id& other) {
 		this->config_file = other.config_file;
-		this->sock = other.sock;
 		this->profiles = other.profiles;
 		return this;
 	}
@@ -75,7 +80,7 @@ public:
 
 extern vector<id> ids;
 
-using json = nlohmann::ordered_json;
+extern bool ids_locked;
 
 extern void clear_button(int profile, int page, int button);
 extern void configure_id(id& ID);

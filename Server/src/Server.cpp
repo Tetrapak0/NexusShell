@@ -3,6 +3,8 @@
 #include "../include/GUI.h"
 #include "../include/Server.h"
 
+unordered_map<string, sockinfo> sock_map;
+
 int connected_devices = 0;
 
 int server_init() {	// make these global
@@ -27,22 +29,34 @@ sockinfo sock_init() {
 }
 
 void begin_accept_cycle(sockinfo& sock) {
-	char idbuf[19];
+	char* idbuf = nullptr;
 	bool is_valid;
 	vector<std::shared_ptr<thread>> socks;
 	sock.ClientSocket = INVALID_SOCKET;
+	try {
+		idbuf = new char[1024 * 256];
+	} catch (std::bad_alloc) {
+		cerr << "Failed to allocate initial buffer.\n";
+		goto failed_alloc;
+	}
+	if (idbuf == nullptr) {
+		cerr << "Failed to allocate initial buffer.\n";
+		goto failed_alloc;
+	}
 	while (!done) {
 		sockinfo accept_sock = sock;
 		is_valid = accept_socket(accept_sock, idbuf, is_valid);
 		if (!is_valid) { closesocket(accept_sock.ClientSocket); continue; }
 		id ID(idbuf);
+		sock_map.insert({ string(idbuf), accept_sock });
 		cerr << "ID: " << ID.ID << "\n";
-		ID.sock = accept_sock;
 		configure_id(ID);
 		ids.push_back(ID);
-		socks.push_back(std::make_unique<thread>(comm, accept_sock));
+		socks.push_back(std::make_unique<thread>(comm));
 	}
+failed_alloc:
 	for (auto& sock : socks) sock->join();
+	delete[] idbuf;
 }
 
 int accept_socket(sockinfo& sock, char* idbuf, bool& id_valid) {
@@ -52,59 +66,68 @@ int accept_socket(sockinfo& sock, char* idbuf, bool& id_valid) {
 	return false;
 }
 
-void comm(sockinfo sock) {
+void comm() {
 	string ID = ids[connected_devices++].ID;
-	char buffer[19];	// FIXME: Potential buffer overflow, make sure to also fix in accept cycle
-	ids[connected_devices - 1].sock = sock;
+	char* buffer = nullptr;
+	try {
+		buffer = new char[1024 * 256];
+	} catch (std::bad_alloc) {
+		cerr << "Failed to allocate memory for ID: " << ID << "\n";
+		goto failed_alloc;
+	}
+	if (buffer == nullptr) {
+		cerr << "Failed to allocate memory for ID: " << ID << "\n";
+		goto failed_alloc;
+	}
 	do {
-		sock.iResult = recv(sock.ClientSocket, buffer, 19, 0);
-		if (sock.iResult > 0) {
+		sock_map[ID].iResult = recv(sock_map[ID].ClientSocket, buffer, 19, 0);
+		if (sock_map[ID].iResult > 0) {
 			string message(buffer);
-			for (int i = 0; i < connected_devices; i++) {
+			for (int i = 0; i < connected_devices; ++i) {
 				if (ids[i].ID == ID) {
 					while (ids[i].locked) {}
 					ids[i].locked = true;
-					ids[i].sock = sock;
 					parse_message(message, ids[i]);
 					ids[i].locked = false;
 				}
 			}
-			//sock.iSendResult = send(sock.ClientSocket, buffer, sock.iResult, 0);
-		}
-	} while (!done && sock.iSendResult > 0 && sock.iResult > 0);
+		} else if (sock_map[ID].iResult == -1 && WSAGetLastError() == WSAETIMEDOUT)  continue;
+	} while (!done && sock_map[ID].iSendResult > 0 && sock_map[ID].iResult > 0);
+	delete[] buffer;
+failed_alloc:
+	closesocket(sock_map[ID].ClientSocket);
+	sock_map.erase(ID);
 	vector<id> swapper;
 	int ids_size = ids.size();
 	int selected_id_back = selected_id;
 	int id_index = -1;
 	bool incremented = false;
 	string selected_id_id_back = selected_id_id;
-	selected_id = -1;
+	while (ids_locked) {}
+	ids_locked = true;
+	selected_id = -1;	// TODO: What if we don't empty the vector, but just invalidate the object with a disconnect bool?
 	selected_id_id = "";
 	for (vector<id>::iterator it = ids.begin(); it != ids.end(); ++it) {
 		if (!incremented) ++id_index;
-		cerr << "ID from iter: " << (*it).ID << "\n";
-		cerr << "rows from iter: " << (*it).profiles[0].rows << "\n";
-		if ((*it).ID == ID)  incremented = true;
+		if ((*it).ID == ID) incremented = true;
 		else swapper.push_back(*it); // Not using vector::erase (or that with std::remove), because it moshes data between objects
 	}
+	cerr << "ID: " << ID << " has disconnected.\n";
 	ids.clear();
 	ids = swapper;
 	if (selected_id_back != id_index && selected_id_back > id_index) {
 		selected_id_id_back = ids[--selected_id_back].ID;
 		selected_id = selected_id_back;
 		selected_id_id = selected_id_id_back;
-	} else if (!selected_id_back){
+	} else if (!selected_id_back && id_index) {
 		selected_id = selected_id_back;
-		should_draw_properties = false;
+		should_draw_button_properties = false;
+		should_draw_id_properties = false;
 		clear_dialog_shown = false;
-		properties_to_draw = -1;
+		button_properties_to_draw = -1;
 		selected_id_id = selected_id_id_back;
 	}
-	for (vector<id>::iterator it = ids.begin(); it != ids.end(); ++it) {
-		cerr << "IDs: " << (*it).ID << "\n";
-		cerr << "profile1 rows: " << (*it).profiles[0].rows << "\n";
-	}
-	closesocket(sock.ClientSocket);
+	ids_locked = false;
 	connected_devices--;
 }
 
@@ -112,10 +135,7 @@ bool is_id(string message) {
 	if (message.length() == ID_LENGTH) {
 		try {
 			unsigned long long convert_id = std::stoull(message);
-			stringstream convert_back;
-			string check_id;
-			convert_back << convert_id;
-			convert_back >> check_id;
+			string check_id = to_string(convert_id);
 			if ((check_id.length() == ID_LENGTH))
 				for (id& temp_id : ids) if (temp_id.ID == check_id) return false;
 				return true;
@@ -129,9 +149,9 @@ void parse_message(string& message, id& ID) {
 		string act_pos = message.substr(2, message.length());
 		int pos = std::stoi(act_pos);
 		pos--;
-		if (!ID.profiles[0].buttons[pos].action.empty()) {
+		if (!CURRENT_PROFILE_PAR.buttons[pos].action.empty()) {
 			string nospace_action = "\"";
-			nospace_action += ID.profiles[0].buttons[pos].action;
+			nospace_action += CURRENT_PROFILE_PAR.buttons[pos].action;
 			nospace_action += "\"";
 			cerr << "Opening: " << nospace_action.c_str() << "\n";
 
