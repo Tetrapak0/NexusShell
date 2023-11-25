@@ -13,6 +13,9 @@ extern int send_result;
 extern int bytes_received;
 
 extern bool connected;
+extern bool kill;
+
+extern string kill_reason;
 
 extern int client_init();
 
