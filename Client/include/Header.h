@@ -7,7 +7,6 @@
 
 #include <iostream>
 #include <thread>
-#include <chrono>
 #include <string>
 #include <vector>
 
@@ -26,10 +25,8 @@ using std::vector;
 
 using std::to_string;
 
-extern bool failed;
+extern bool failed; // TODO: Move to specific headers
 extern bool failed_backup;
-extern bool has_commsock;
-extern bool has_confsock;
 extern bool done;
 extern bool disconnected_modal;
 
