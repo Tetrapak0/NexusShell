@@ -50,39 +50,42 @@ public:
 
 class id {
 public:
-	int current_profile = 0;
-	bool locked = false;
 	string ID;
+	string nickname;
 	string config_file;
+	sockinfo sock;
 	json config;
 	vector<profile> profiles;
+	int current_profile = 0;
+	bool locked = false;
 	id() {}
 	id(string in_ID) : ID(in_ID) {};
 	id(const id& ID) {
 		this->ID = ID.ID;
+		this->current_profile = ID.current_profile;
+		this->nickname = ID.nickname;
+		this->sock = ID.sock;
 		this->config_file = ID.config_file;
+		this->config = ID.config;
 		this->profiles = ID.profiles;
 	}
 	id(const id* ID) {
 		this->ID = ID->ID;
+		this->current_profile = ID->current_profile;
+		this->nickname = ID->nickname;
+		this->sock = ID->sock;
 		this->config_file = ID->config_file;
+		this->config = ID->config;
 		this->profiles = ID->profiles;
-	}
-	bool operator==(const id& other) const {
-		return this->ID == other.ID;
-	}
-	id operator=(const id& other) {
-		this->config_file = other.config_file;
-		this->profiles = other.profiles;
-		return this;
 	}
 };
 
-extern vector<id> ids;
+extern unordered_map<string, id> ids;
 
 extern bool ids_locked;
+extern bool button_cleared;
 
 extern void clear_button(int profile, int page, int button);
-extern void configure_id(id& ID);
-extern void reconfigure(id& ID);
+extern int configure_id(id& ID);
+extern int reconfigure(id& ID);
 extern void write_config(vector<string> args, size_t arg_size);

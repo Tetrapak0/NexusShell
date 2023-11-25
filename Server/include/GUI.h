@@ -52,9 +52,8 @@ extern bool should_draw_button_properties;
 extern bool clear_dialog_shown;
 
 extern int button_properties_to_draw;
-extern int selected_id;
 
-extern std::string selected_id_id;
+extern std::string selected_id;
 
 extern int gui_init();
 extern int tray_init();

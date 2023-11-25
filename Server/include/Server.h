@@ -21,7 +21,7 @@ struct sockinfo {
 	struct addrinfo* result = NULL;
 };
 
-extern unordered_map<string, sockinfo> sock_map;
+extern int connected_devices;
 
 extern int server_init();
 
@@ -33,5 +33,5 @@ extern int accept_socket(sockinfo& sock, char* idbuf, bool& is_valid);
 extern bool is_id(string message);
 
 extern void begin_accept_cycle(sockinfo& sock);
-extern void comm();
+extern void comm(string ID);
 extern void parse_message(string& message, id& ID);
