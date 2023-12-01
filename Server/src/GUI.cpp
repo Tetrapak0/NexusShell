@@ -87,7 +87,7 @@ int gui_init() {
 	return 0;
 }
 
-ImVec4* set_colors(/*theme parameters*/) {
+ImVec4* set_colors() {
 	ImVec4* colors = ImGui::GetStyle().Colors;
 	colors[ImGuiCol_Text]					= ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
 	colors[ImGuiCol_TextDisabled]			= ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
@@ -127,8 +127,8 @@ ImVec4* set_colors(/*theme parameters*/) {
 
 	return colors;
 }
-// TODO: custom themes and styles
-ImGuiStyle& set_style(/*style parameters*/) {
+// TODO: custom style
+ImGuiStyle& set_style() {
 	ImGuiStyle& style		= ImGui::GetStyle();
 	style.ItemSpacing		= ImVec2(0.0f, 0.0f);
 	style.ItemInnerSpacing	= ImVec2(0.0f, 0.0f);
@@ -145,6 +145,8 @@ ImGuiStyle& set_style(/*style parameters*/) {
 
 int tray_init() {
 	Tray::Tray tray("NexusShell", "icon.ico");
+int tray_init() {		// TODO: Switch to another tray system
+	Tray::Tray tray(L"NexusShell", "icon.ico");
 	tray.addEntry(Tray::Button("Show Window\0", [&] { ShowWindow(FindWindow(NULL, L"NexusShell"), SW_NORMAL);
 													  SetFocus(FindWindow(NULL, L"NexusShell")); }));
 	tray.addEntry(Tray::Separator());
