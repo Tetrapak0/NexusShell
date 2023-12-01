@@ -13,11 +13,11 @@ namespace Tray
     {
       protected:
         Icon icon;
-        std::string identifier;
+        std::wstring identifier;
         std::vector<std::shared_ptr<TrayEntry>> entries;
 
       public:
-        BaseTray(std::string identifier, Icon icon);
+        BaseTray(std::wstring identifier, Icon icon);
 
         template <typename... T> void addEntries(const T &...entries)
         {

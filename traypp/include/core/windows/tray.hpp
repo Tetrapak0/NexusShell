@@ -21,8 +21,8 @@ namespace Tray
 
       public:
         ~Tray();
-        Tray(std::string identifier, Icon icon);
-        template <typename... T> Tray(std::string identifier, Icon icon, const T &...entries) : Tray(identifier, icon)
+        Tray(std::wstring identifier, Icon icon);
+        template <typename... T> Tray(std::wstring identifier, Icon icon, const T &...entries) : Tray(identifier, icon)
         {
             addEntries(entries...);
         }
