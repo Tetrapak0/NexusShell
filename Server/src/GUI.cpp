@@ -143,8 +143,6 @@ ImGuiStyle& set_style() {
 	return style;
 }
 
-int tray_init() {
-	Tray::Tray tray("NexusShell", "icon.ico");
 int tray_init() {		// TODO: Switch to another tray system
 	Tray::Tray tray(L"NexusShell", "icon.ico");
 	tray.addEntry(Tray::Button("Show Window\0", [&] { ShowWindow(FindWindow(NULL, L"NexusShell"), SW_NORMAL);
