@@ -1,5 +1,8 @@
 #pragma once
 
+#define	LOG(x)			cerr << x << "\n"
+#define	LOGVAR(x, y)	cerr << x << ": " << y << "\n"
+
 #define _CRT_SECURE_NO_WARNINGS
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 #define WIN32_LEAN_AND_MEAN
@@ -26,6 +29,7 @@ using std::string;
 using std::vector;
 using std::thread;
 using std::unordered_map;
+using std::wstring;
 
 using std::to_string;
 

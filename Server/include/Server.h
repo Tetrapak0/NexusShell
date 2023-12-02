@@ -22,6 +22,11 @@ struct sockinfo {
 };
 
 extern int connected_devices;
+extern int port;
+
+extern bool restart_socket;
+
+extern sockinfo global_sock;
 
 extern int server_init();
 

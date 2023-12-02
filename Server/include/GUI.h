@@ -24,29 +24,6 @@
 
 #include "../../Helvetica.h"
 
-#define SDL_ERROR(fail_point) {												\
-	string what_error(fail_point);											\
-	string message = "Failed to initialize ";								\
-	message += what_error;													\
-	message += SDL_GetError();												\
-	const SDL_MessageBoxButtonData button_data[] = {						\
-		{SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 0, "OK"}					\
-	};																		\
-	int buttonid;															\
-	const SDL_MessageBoxData msgbox_data = {								\
-		SDL_MESSAGEBOX_ERROR,												\
-		NULL,																\
-		"Error!",															\
-		message.c_str(),													\
-		SDL_arraysize(button_data),											\
-		button_data,														\
-		NULL																\
-	};																		\
-	SDL_ShowMessageBox(&msgbox_data, &buttonid);							\
-	done = true;															\
-	exit(-1);																\
-}
-
 extern bool should_draw_id_properties;
 extern bool should_draw_button_properties;
 extern bool clear_dialog_shown;
@@ -59,6 +36,7 @@ extern int gui_init();
 extern int tray_init();
 
 extern void draw_main();
+extern void error_dialog(int type, std::string message);
 
 ImVec4*		set_colors();
 ImGuiStyle& set_style();

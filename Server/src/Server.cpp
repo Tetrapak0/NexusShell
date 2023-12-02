@@ -4,29 +4,59 @@
 #include "../include/Server.h"
 
 int connected_devices = 0;
+int port		      = 27015;
+
+bool restart_socket = false;
+
+sockinfo global_sock;
 
 int server_init() {	// make these global
-	sockinfo sock = sock_init();
-	if (sock.iResult != -1) begin_accept_cycle(sock);
-	else {
-		return -1; // todo: Show error message if window not found; add bool bound_sock
-	}
-	closesocket(sock.ClientSocket);
+	global_sock = sock_init();
+	if (global_sock.iResult == -1) return -1;
+	else begin_accept_cycle(global_sock);
+	closesocket(global_sock.ListenSocket);
 	WSACleanup();
 	connected_devices = 0;
 	ids.clear();
+	if (restart_socket) {
+		LOG("--------------REBOOTING SOCK--------------");
+		return server_init();
+	}
+	restart_socket = true;
+	done = true;
 	return 0;
 }
 
 sockinfo sock_init() {
 	sockinfo si;
 	ZeroMemory(&si.hints, sizeof(si.hints));
+	string portstore = getenv("USERPROFILE");				// TODO: move to rw_portstore
+	portstore += "\\AppData\\Roaming\\NexusShell\\";
+	if (!exists(portstore)) create_directory(portstore);
+	portstore += "portstore";
+	if (exists(portstore)) {
+		ifstream reader(portstore);
+		char temp[6];
+		reader.getline(temp, 6);
+		reader.close();
+		string tempstr(temp);
+		try {
+			port = std::stoi(tempstr);
+		} catch (...) { port = 27015; }
+		if (port > 65535) {
+			port = 27015;
+			ofstream writer(portstore);
+			writer << port;
+			writer.close();
+		}
+	}
 	if (setup_sock(si)) si.iResult = -1;
 	si.ClientSocket = INVALID_SOCKET;
 	return si;
 }
 
 void begin_accept_cycle(sockinfo& sock) {
+	restart_socket = false;
 	char* idbuf = nullptr;
 	bool is_valid;
 	vector<std::shared_ptr<thread>> socks;
@@ -34,31 +64,33 @@ void begin_accept_cycle(sockinfo& sock) {
 	try {
 		idbuf = new char[1024 * 256];
 	} catch (std::bad_alloc) {
-		cerr << "Failed to allocate initial buffer.\n";
-		goto failed_alloc;
+		LOG("Failed to allocate initial buffer.");
+		error_dialog(1, "Failed to allocate initial buffer.\n");
+		exit(-1);
 	}
 	if (idbuf == nullptr) {
-		cerr << "Failed to allocate initial buffer.\n";
-		goto failed_alloc;
+		LOG("Failed to allocate initial buffer.");
+		error_dialog(1, "Failed to allocate initial buffer.\n");
+		exit(-1);
 	}
-	while (!done) {
+	while (!done && !restart_socket) {
 		sockinfo accept_sock = sock;
 		is_valid = accept_socket(accept_sock, idbuf, is_valid);
 		if (!is_valid) { closesocket(accept_sock.ClientSocket); continue; }
 		id ID(idbuf);
-		cerr << "ID: " << ID.ID << "\n";
+		LOGVAR("ID", ID.ID);
 		ID.sock = accept_sock;
 		if (configure_id(ID)) continue;
 		ids.insert({ID.ID, ID});
 		socks.push_back(std::make_unique<thread>(comm, ID.ID));
 	}
-failed_alloc:
 	for (auto& sock : socks) sock->join();
 	delete[] idbuf;
 }
 
 int accept_socket(sockinfo& sock, char* idbuf, bool& id_valid) {
-	while (sock.ClientSocket == INVALID_SOCKET && !done) sock.ClientSocket = accept(sock.ListenSocket, NULL, NULL);
+	while (sock.ClientSocket == INVALID_SOCKET && !done && !restart_socket) 
+		sock.ClientSocket = accept(sock.ListenSocket, NULL, NULL);
 	sock.iResult = recv(sock.ClientSocket, idbuf, 19, 0);
 	if (is_id(idbuf)) return true;
 	return false;
@@ -70,29 +102,30 @@ void comm(string ID) {
 	try {
 		buffer = new char[1024 * 256];
 	} catch (std::bad_alloc) {
-		cerr << "Failed to allocate memory for ID: " << ID << "\n";
+		LOGVAR("Failed to allocate buffer for ID", ID);
+		error_dialog(1, ("Failed to allocate buffer for ID: ", ID, "\n"));
 		goto failed_alloc;
 	}
 	if (buffer == nullptr) {
-		cerr << "Failed to allocate memory for ID: " << ID << "\n";
+		LOGVAR("Failed to allocate buffer for ID", ID);
+		error_dialog(1, ("Failed to allocate buffer for ID: ", ID, "\n"));
 		goto failed_alloc;
 	}
 	do {
 		comm_id.sock.iResult = recv(comm_id.sock.ClientSocket, buffer, 19, 0);
 		if (comm_id.sock.iResult > 0) {
 			string message(buffer);
-			while (comm_id.locked) {}
-			comm_id.locked = true;
+			while (comm_id.locked.load()) {}
+			comm_id.locked.exchange(true);
 			parse_message(message, comm_id);
-			comm_id.locked = false;
+			comm_id.locked.exchange(false);
 		}
-	} while (!done && comm_id.sock.iSendResult > 0 && comm_id.sock.iResult > 0);
+	} while (!done && !restart_socket && comm_id.sock.iSendResult > 0 && comm_id.sock.iResult > 0);
 	delete[] buffer;
 failed_alloc:
 	closesocket(comm_id.sock.ClientSocket);
-	ids.erase(ID);
-	while (ids_locked) {}
-	ids_locked = true;
+	while (ids_locked.load()) {}
+	ids_locked.exchange(true);
 	if (selected_id == ID) {
 		clear_dialog_shown = false;
 		should_draw_button_properties = false;
@@ -100,7 +133,8 @@ failed_alloc:
 		button_properties_to_draw = -1;
 		selected_id = "";
 	}
-	ids_locked = false;
+	ids.erase(ID);
+	ids_locked.exchange(false);
 }
 
 bool is_id(string message) {
@@ -125,22 +159,20 @@ void parse_message(string& message, id& ID) {
 			string nospace_action = "\"";
 			nospace_action += CURRENT_PROFILE_PAR.buttons[pos].action;
 			nospace_action += "\"";
-			cerr << "Opening: " << nospace_action.c_str() << "\n";
+			LOGVAR("Opening", nospace_action);
 
-			std::wstring wstring_action = std::wstring(nospace_action.begin(), nospace_action.end());
-			wchar_t* wchar_action = (wchar_t*)wstring_action.c_str();
+			wstring wstring_action(nospace_action.begin(), nospace_action.end());
 
 			switch (ID.profiles[0].buttons[pos].type) {
 				case button::types::Directory:
-					ShellExecute(NULL, L"explore", wchar_action, NULL, NULL, SW_SHOW);
+					ShellExecute(NULL, L"explore", wstring_action.c_str(), NULL, NULL, SW_SHOW);
 					break;
 				default:
-					ShellExecute(NULL, L"open", wchar_action, NULL, NULL, SW_SHOW);
+					ShellExecute(NULL, L"open", wstring_action.c_str(), NULL, NULL, SW_SHOW);
 			}
 		}
 		return;
 	}
-	// TODO: add set_screen() function to change "working directory"
 }
 
 int setup_sock(sockinfo& si) {
@@ -149,7 +181,7 @@ int setup_sock(sockinfo& si) {
 	si.hints.ai_socktype = SOCK_STREAM;
 	si.hints.ai_protocol = IPPROTO_TCP;
 	si.hints.ai_flags = AI_PASSIVE;
-	si.iResult = getaddrinfo(NULL, "27015", &si.hints, &si.result);	// TODO: Let the user specify the port
+	si.iResult = getaddrinfo(NULL, to_string(port).c_str(), &si.hints, &si.result);
 	if (si.iResult) { WSACleanup(); return 1; }
 	si.ListenSocket = socket(si.result->ai_family, si.result->ai_socktype, si.result->ai_protocol);
 	if (si.ListenSocket == INVALID_SOCKET) {
@@ -159,8 +191,12 @@ int setup_sock(sockinfo& si) {
 	}
 	si.iResult = bind(si.ListenSocket, si.result->ai_addr, (int)si.result->ai_addrlen);
 	if (si.iResult == SOCKET_ERROR) {
-		ShowWindow(FindWindow(NULL, L"NexusShell"), SW_NORMAL);
-		SetFocus(FindWindow(NULL, L"NexusShell"));
+		HANDLE nxsh_window = FindWindow(NULL, L"NexusShell");
+		if (nxsh_window != INVALID_HANDLE_VALUE) {
+			ShowWindow(FindWindow(NULL, L"NexusShell"), SW_NORMAL);
+			SetFocus(FindWindow(NULL, L"NexusShell"));
+		} else
+			error_dialog(1, "Port already occupied by another program.\nEdit configuration to use another port.");
 		freeaddrinfo(si.result);
 		closesocket(si.ListenSocket);
 		WSACleanup();

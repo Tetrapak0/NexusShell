@@ -1,6 +1,6 @@
 #include "../../include/core/traybase.hpp"
 
-Tray::BaseTray::BaseTray(std::string identifier, Icon icon) : icon(std::move(icon)), identifier(std::move(identifier))
+Tray::BaseTray::BaseTray(std::wstring identifier, Icon icon) : icon(std::move(icon)), identifier(std::move(identifier))
 {
 }
 
