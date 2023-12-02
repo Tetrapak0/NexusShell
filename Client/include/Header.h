@@ -2,8 +2,8 @@
 
 #define SHORTCUT_PREFIX "SH"
 
-#define LOG(x) cerr << x << "\n";
-#define VAR_LOG(x, y) cerr << x << ": " << y << "\n";
+#define LOG(x) cerr << x << "\n"
+#define VARLOG(x, y) cerr << x << ": " << y << "\n"
 
 #include <iostream>
 #include <thread>
@@ -25,9 +25,4 @@ using std::vector;
 
 using std::to_string;
 
-extern bool failed; // TODO: Move to specific headers
-extern bool failed_backup;
 extern bool done;
-extern bool disconnected_modal;
-
-extern char ip_address[16];

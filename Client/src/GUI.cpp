@@ -3,13 +3,13 @@
 #include "../include/Config.h"
 #include "../include/Client.h"
 
-// int current_profile = 0; // TODO:
+int current_profile = 0; // TODO:
 
 bool done = false;
 bool failed_backup;
 bool run_setup;
 bool hide_failed;
-bool reconfiguring = false;
+bool disconnected_modal = false;
 
 vector<profile> profiles = {};
 
@@ -23,10 +23,10 @@ int gui_init() {
     SDL_Window* window = SDL_CreateWindow("NexusShell", 1280, 720, SDL_WINDOW_OPENGL     |
                                                                  SDL_WINDOW_FULLSCREEN |
                                                                  SDL_WINDOW_HIDDEN    );
-    if (window == nullptr) SDL_ERROR("window")
+    if (window == nullptr) error_dialog(0, "Failed to initialize window.\n");
     SDL_Renderer* renderer = SDL_CreateRenderer(window, NULL, SDL_RENDERER_PRESENTVSYNC |
                                                               SDL_RENDERER_ACCELERATED );
-    if (renderer == nullptr) SDL_ERROR("renderer")
+    if (renderer == nullptr) error_dialog(0, "Failed to initialize renderer.\n");
     SDL_ShowWindow(window);
 
     IMGUI_CHECKVERSION();
@@ -38,7 +38,7 @@ int gui_init() {
 
     ImGui::StyleColorsDark();
     ImVec4*     colors  = set_colors();
-    default_style = ImGui::GetStyle();
+    default_style       = ImGui::GetStyle();
     ImGuiStyle& style   = set_style();
 
 	static const ImWchar glyph_range[] = {0x0020, 0xFFFF};
@@ -65,9 +65,9 @@ int gui_init() {
         ImGui_ImplSDL3_NewFrame();
         ImGui::NewFrame();
 
-        if (run_setup && !have_ip)                                  draw_setup();
-        if ((!connected && have_ip) && !kill || disconnected_modal) draw_disconnected_alert();
-        if (kill && !connected)                                     draw_killed();
+        if (run_setup && (!have_ip || !have_port))  draw_setup();
+        if ((!connected && have_ip && have_port) && !kill || disconnected_modal) draw_disconnected_alert();
+        if (kill && !connected) draw_killed();
 
         im_window_flags |= ImGuiWindowFlags_NoDecoration
                         |  ImGuiWindowFlags_NoDocking
@@ -95,7 +95,7 @@ int gui_init() {
     return 0;
 }
 
-ImVec4* set_colors(/*color parameters*/) {
+ImVec4* set_colors() {
     ImVec4* colors = ImGui::GetStyle().Colors;
     colors[ImGuiCol_WindowBg]               = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
     colors[ImGuiCol_ChildBg]                = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
@@ -128,7 +128,7 @@ ImVec4* set_colors(/*color parameters*/) {
     return colors;
 }
 // TODO: custom themes and styles
-ImGuiStyle& set_style(/*style parameters*/) {
+ImGuiStyle& set_style() {
     ImGuiStyle& style = ImGui::GetStyle();
     style.ItemSpacing       = ImVec2(0.0f, 0.0f);
     style.ItemInnerSpacing  = ImVec2(0.0f, 0.0f);
@@ -156,36 +156,25 @@ void draw_main(screens current) { // TODO: Create window in main to display tabs
 
 void draw_button(string label, int index) {
     ImGuiIO& io = ImGui::GetIO();
-    if (ImGui::Button(label.c_str(), ImVec2((io.DisplaySize.x / profiles[0].columns), 
-                                            (io.DisplaySize.y / profiles[0].rows)))) {
+    if (ImGui::Button(label.c_str(), ImVec2((io.DisplaySize.x / CURRENT_PROFILE.columns), 
+                                            (io.DisplaySize.y / CURRENT_PROFILE.rows)))) {
         string message = SHORTCUT_PREFIX + to_string(index);
-        send_result = send(sock, message.c_str(), message.length() + 1, 0);                            
+        send_result = send(sock, message.c_str(), message.length() + 1, 0);
     }
 }
 
 void draw_home() {
     ImGuiIO& io = ImGui::GetIO();
-    if (!profiles.empty() && !reconfiguring) {
-        for (int i = 1; i <= (profiles[0].columns * profiles[0].rows); ++i) {
-            ImGui::BeginDisabled(profiles[0].buttons[i-1].action.empty());
-            if (profiles[0].buttons[i-1].default_label) draw_button(to_string(i), i);
-            else if (profiles[0].buttons[i-1].label.empty()) draw_button("##", i);
-            else draw_button(profiles[0].buttons[i-1].label, i);
-            if (i % profiles[0].columns != 0) ImGui::SameLine();
+    if (!reconfiguring.load() && !profiles.empty() && !CURRENT_PROFILE.buttons.empty()) {
+        for (int i = 1; i <= (CURRENT_PROFILE.columns * CURRENT_PROFILE.rows); ++i) {
+            ImGui::BeginDisabled(CURRENT_BUTTOM_M1_LOOP.action.empty());
+            if (CURRENT_BUTTOM_M1_LOOP.default_label) draw_button(to_string(i), i);
+            else if (CURRENT_BUTTOM_M1_LOOP.label.empty()) draw_button("##", i);
+            else draw_button(CURRENT_BUTTOM_M1_LOOP.label, i);
+            if (i % CURRENT_PROFILE.columns != 0) ImGui::SameLine();
             ImGui::EndDisabled();
         }
     } else {
-        if (reconfiguring) {
-            ImGuiStyle& style = ImGui::GetStyle();
-            style.ItemSpacing = ImVec2(1.0f, 1.0f);
-            ImGui::BeginPopup("Reconfiguring");
-            if (ImGui::BeginPopupModal("Reconfiguring", NULL, im_window_flags)) {
-                ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f), ImGuiCond_Always, ImVec2(0.5f,0.5f));
-                ImGui::SetWindowFontScale(2.0f);
-                ImGui::Text("Reconfiguring...\nPlease Wait");
-                ImGui::EndPopup();
-            }
-        }
         ImGui::BeginDisabled();
         for (int i = 1; i <= 24; ++i) {
             ImGui::Button(to_string(i).c_str(), ImVec2((io.DisplaySize.x / 6), (io.DisplaySize.y / 4)));
@@ -244,7 +233,10 @@ void draw_setup() {
             if (connected) run_setup = false;
         }
         ImGui::Text("Server IP address:");
-        ImGui::InputText("##", ip_address, 16);
+        ImGui::InputText("##IP", ip_address, 16);
+        ImGui::Text("Server port:");
+        ImGui::InputInt("##port", &port);
+        if (port > 65535) port = 27015;
         if (ImGui::Button("Connect")) {
             failed        = false;
             failed_backup = false;
@@ -266,18 +258,37 @@ void draw_disconnected_alert() {
         ImGui::SetWindowFontScale(2.0f);
         failed = false;
         ImGui::Text("Disconnected.");
-        ImGui::Text("Attempting to reconnect to %s", ip_address);
-        if (ImGui::Button("Change IP address")) {
+        ImGui::Text("Attempting to reconnect to %s:%i", ip_address, port);
+        if (ImGui::Button("Change server info")) {
             disconnected_modal  = false;
             have_ip             = false;
+            have_port           = false;
             failed              = true;
             hide_failed         = true;
             run_setup           = true;
             remove_ipstore();
+            remove_portstore();
+            remove_config();
         }
         ImGui::EndPopup();
     }
     ImGui::PopStyleVar(8);
+}
+
+void error_dialog(int type, string message) {
+	if (!type) message += SDL_GetError();
+    LOG(message);
+	int buttonid;
+	SDL_MessageBoxButtonData button_data[] = { 
+        {SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 0, "OK"}
+    };
+	SDL_MessageBoxData msgbox_data = {
+		SDL_MESSAGEBOX_ERROR,		NULL,
+		"Error!",					message.c_str(),
+		SDL_arraysize(button_data), button_data,
+        NULL
+	};
+	SDL_ShowMessageBox(&msgbox_data, &buttonid);
 }
 
 #ifdef _DEBUG 

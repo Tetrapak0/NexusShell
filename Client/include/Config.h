@@ -5,6 +5,7 @@
 #include <vector>
 #include <string>
 #include <random>
+#include <atomic>
 
 #include "../../json.hpp"
 
@@ -16,17 +17,18 @@ using std::istreambuf_iterator;
 using std::random_device;
 using std::mt19937;
 using std::uniform_int_distribution;
+using std::atomic;
 
 using std::filesystem::exists;
 using std::filesystem::remove;
 using std::filesystem::create_directory;
+using std::filesystem::create_directories;
 
 using json = nlohmann::ordered_json;
 
 extern json config;
 
-extern bool have_ip;
-extern bool reconfiguring;
+extern atomic<bool> reconfiguring;
 
 extern char* homedir;
 
@@ -50,10 +52,14 @@ extern vector<profile> profiles;
 extern const string id_gen();
 extern const string rw_UUID();
 
-extern bool rw_ipstore();
+extern bool read_ipstore();
+extern bool read_portstore();
+extern void write_ipstore();
+extern void write_portstore();
+extern void remove_ipstore();
+extern void remove_portstore();
 
 extern void check_config();
-extern void set_properties();
-extern void remove_ipstore();
-extern void clear_config();
+extern void read_config();
+extern void remove_config();
 extern void write_config(string recvd_config);

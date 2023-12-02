@@ -6,7 +6,9 @@ struct passwd* pw = getpwuid(getuid());
 
 char* homedir = pw->pw_dir;
 
-bool have_ip  = false;
+json config;
+
+atomic<bool> reconfiguring = false;
 
 const string id_gen() {
     const unsigned long long min = 100000000000000000;
@@ -21,49 +23,49 @@ const string id_gen() {
 
 const string rw_UUID() {
     string nxsh_dir(homedir);
-    nxsh_dir += "/.config";
-    if (!exists(nxsh_dir)) create_directory(nxsh_dir);
-    nxsh_dir += "/NexusShell";
-    string uuid_path = nxsh_dir + "/UUID";
-    if (!exists(uuid_path)) {
-        if (!exists(nxsh_dir)) create_directory(nxsh_dir);
-        const string id = id_gen();
-        ofstream uuid_file(uuid_path);
-        uuid_file << id;
-        uuid_file.close();
+    nxsh_dir += "/.config/NexusShell";
+    string nxsh_file = nxsh_dir + "/UUID";
+    if (exists(nxsh_file)) {
+        ifstream reader(nxsh_file);
+        char idbuf[19];
+        reader.getline(idbuf, 19);
+        const string id(idbuf);
+        reader.close();
         return id;
     } else {
-        ifstream uuid_file(uuid_path);
-        char idbuf[19];
-        uuid_file.getline(idbuf, 19);
-        const string id(idbuf);
-        uuid_file.close();
+        create_directories(nxsh_dir);
+        const string id = id_gen();
+        ofstream writer(nxsh_file);
+        writer << id;
+        writer.close();
         return id;
     }
 }
 
-bool rw_ipstore() {
+bool read_ipstore() {
     string nxsh_config(homedir);
-    nxsh_config += "/.config";
-    if (!exists(nxsh_config)) create_directory(nxsh_config);
-    nxsh_config += "/NexusShell";
-    if (!exists(nxsh_config)) create_directory(nxsh_config);
-    nxsh_config += "/ipstore";
+    nxsh_config += "/.config/NexusShell/ipstore";
+    ifstream reader(nxsh_config);
     if (exists(nxsh_config)) {
-        ifstream ip_reader(nxsh_config);
-        string read_ip((istreambuf_iterator<char>(ip_reader)),
-                               (istreambuf_iterator<char>()));
-        ip_reader.close();
-        if (!read_ip.empty()) {
-            strncpy(ip_address, read_ip.c_str(), read_ip.length());
+        if(reader.peek() != ifstream::traits_type::eof()) {
+            reader.getline(ip_address, 16);
+            reader.close();
             if (!kill) failed = false;
             return true;
         }
+        reader.close();
     }
-    ofstream ip_hoarder(nxsh_config);
-    ip_hoarder << ip_address;
-    ip_hoarder.close();
     return false;
+}
+
+void write_ipstore() {
+    string nxsh_config(homedir);
+    nxsh_config += "/.config/NexusShell";
+    create_directories(nxsh_config);
+    nxsh_config += "/ipstore";
+    ofstream writer(nxsh_config);
+    writer << ip_address;
+    writer.close();
 }
 
 void remove_ipstore() {
@@ -72,78 +74,110 @@ void remove_ipstore() {
     if (exists(nxsh_config)) std::filesystem::remove(nxsh_config);
 }
 
-void check_config() {
+bool read_portstore() {
     string nxsh_config(homedir);
-    nxsh_config += "/.config";
-    if (!exists(nxsh_config)) create_directory(nxsh_config);
-    nxsh_config += "/NexusShell";
-    nxsh_config += "/config.json";
+    nxsh_config += "/.config/NexusShell/portstore";
     if (exists(nxsh_config)) {
         ifstream reader(nxsh_config);
         if (reader.peek() != ifstream::traits_type::eof()) {
-            try {
-                config = json::parse(reader);
-                set_properties();
-            } catch (...) {cerr << "Unable to parse config\n";}
+            char temp[6];
+            reader.getline(temp, 6);
+            reader.close();
+            string tempstr = temp;
+            try { port = stoi(tempstr); } 
+            catch (...) { port = 27015; return false; }
+            if (port > 65535) {
+                port = 27015;
+                ofstream writer(nxsh_config);
+                writer << port;
+                writer.close();
+                return false;
+            }
+            if (!kill) failed = false;
+            return true;
+        }
+        reader.close();
+    }
+    return false;
+}
+
+void write_portstore() {
+    string nxsh_config(homedir);
+    nxsh_config += "/.config/NexusShell";
+    create_directories(nxsh_config);
+    nxsh_config += "/portstore";
+    ofstream writer(nxsh_config);
+    writer << port;
+    writer.close();
+}
+
+void remove_portstore() {
+    string nxsh_config(homedir);
+    nxsh_config += "/.config/NexusShell/portstore";
+    if (exists(nxsh_config)) std::filesystem::remove(nxsh_config);
+}
+
+void check_config() {
+    string nxsh_dir(homedir);
+    nxsh_dir += "/.config/NexusShell";
+    string nxsh_file = nxsh_dir + "/config.json";
+    if (exists(nxsh_file)) {
+        ifstream reader(nxsh_file);
+        if (reader.peek() != ifstream::traits_type::eof()) {
+            config = json::parse(reader);
+            read_config();
         }
         reader.close();
     }
 }
 
-void clear_config() {
-    cerr << "here\n";
+void remove_config() {
     string nxsh_config(homedir);
-    nxsh_config += "/.config";
-    if (!exists(nxsh_config)) create_directory(nxsh_config);
-    nxsh_config += "/NexusShell";
-	if (!exists(nxsh_config)) create_directory(nxsh_config);
+    nxsh_config += "/.config/NexusShell";
+    create_directories(nxsh_config);
     nxsh_config += "/config.json";
-    ofstream writer(nxsh_config);
     profiles.clear();
     profile profile1;
-    for (int i = 1; i <= profile1.columns * profile1.rows; ++i) {
-        button button1;
-        profile1.buttons.push_back(button1);
-    }
+    for (int i = 1; i <= profile1.columns * profile1.rows; ++i)
+        profile1.buttons.push_back(button());
     profiles.push_back(profile1);
+    ofstream writer(nxsh_config);
     writer.close();
 }
 
 void write_config(string recvd_config) {
-	string nxsh_config(homedir);
-    nxsh_config += "/.config";
-    if (!exists(nxsh_config)) create_directory(nxsh_config);
-    nxsh_config += "/NexusShell";
-	if (!exists(nxsh_config)) create_directory(nxsh_config);
-    nxsh_config += "/config.json";
     config = json::parse(recvd_config);
+	string nxsh_config(homedir);
+    nxsh_config += "/.config/NexusShell";
+	create_directories(nxsh_config);
+    nxsh_config += "/config.json";
 	ofstream writer(nxsh_config);
 	writer << config.dump(4);
 	writer.close();
-    set_properties();
+    read_config();
 }
 
-void set_properties() {
-    reconfiguring = true;
+void read_config() {
+    reconfiguring.exchange(true);
     profiles.clear();
     if (config[config.begin().key()].contains("profiles")) {
         int profile_count = 0;
         for (auto& profile : config[config.begin().key()]["profiles"]) if (profile.is_object()) profile_count++;
         for (int i = 0; i < profile_count; ++i) {
             profile profile1;
-            json profile_store = config[config.begin().key()]["profiles"][to_string(i)];
-            if (profile_store.contains("columns")) profile1.columns = std::stoi(profile_store["columns"].get<string>());
-            if (profile_store.contains("rows"))    profile1.rows    = std::stoi(profile_store["rows"].get<string>());
+            json& profile_store = config[config.begin().key()]["profiles"][to_string(i)];
+            if (profile_store.contains("columns")) profile1.columns = stoi(profile_store["columns"].get<string>());
+            if (profile_store.contains("rows"))    profile1.rows    = stoi(profile_store["rows"].get<string>());
             if (profile_store.contains("pages")) {
                 int page_count = 0;
                 for (auto& page : profile_store["pages"]) if (page.is_object()) page_count++;
                 for (int j = 0; j < page_count; ++j) {
-                    json page_store = profile_store["pages"][to_string(j)];
+                    json& page_store = profile_store["pages"][to_string(j)];
                     if (page_store.contains("buttons")) {
                         for (int k = 0; k < profile1.columns * profile1.rows; ++k) {
                             button button1;
                             if (page_store["buttons"].contains(to_string(k))) {
-                                json button_store = page_store["buttons"][to_string(k)];
+                                json& button_store = page_store["buttons"][to_string(k)];
                                 if (button_store.contains("label")) button1.label = button_store["label"];
                                 if (button_store.contains("has default label")) {
 							        if (button_store["has default label"] == "1") button1.default_label = true;
@@ -155,12 +189,17 @@ void set_properties() {
                             }
                             profile1.buttons.push_back(button1);
                         }
-                    }
+                    } else for (int k = 1; k <= profile1.columns * profile1.rows; ++k) profile1.buttons.push_back(button());
                 }
-            }
+            } else for (int k = 1; k <= profile1.columns * profile1.rows; ++k) profile1.buttons.push_back(button());
             profiles.push_back(profile1);
         }
-    }
-    reconfiguring = false;
-    cerr << "configured\n";
+    } else {
+		profile profile1;
+		for (int i = 1; i <= profile1.columns * profile1.rows; ++i)
+			profile1.buttons.push_back(button());
+		profiles.push_back(profile1);
+	}
+    reconfiguring.exchange(false);
+    LOG("configured");
 }
