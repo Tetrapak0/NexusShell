@@ -5,17 +5,18 @@
 #define CURRENT_PROFILE_PAR		ID.profiles[ID.current_profile]
 
 #define CURRENT_BUTTON			CURRENT_PROFILE.buttons[index] // TODO: Change this to actual page
+#define CURRENT_BUTTON_LOOP  CURRENT_PROFILE.buttons[i]
 #define CURRENT_BUTTON_M1_LOOP  CURRENT_PROFILE.buttons[i-1]
 
 #include <filesystem>
 #include <fstream>
 #include <vector>
 #include <string>
-#include <atomic>
+#include <mutex>
 
 #include "../include/Server.h"
 
-#include "../../json.hpp"
+#include "../../external/json.hpp"
 
 struct sockinfo;
 
@@ -24,7 +25,7 @@ using std::vector;
 using std::ifstream;
 using std::ofstream;
 using std::istreambuf_iterator;
-using std::atomic;
+using std::mutex;
 
 using std::filesystem::exists;
 using std::filesystem::remove;
@@ -32,15 +33,7 @@ using std::filesystem::create_directory;
 
 using json = nlohmann::ordered_json;
 
-class button {
-public:
-	string label		 = "";
-	string label_backup	 = label;
-	string action;
-	bool default_label = true;
-	enum types { File, URL, Command, Directory, };
-	types type = File;
-};
+class button;
 
 class profile {
 public:
@@ -58,7 +51,7 @@ public:
 	sockinfo sock;
 	json config;
 	vector<profile> profiles;
-	atomic<bool> locked;
+	mutex lock;
 	int current_profile = 0;
 	id() {}
 	id(string in_ID) : ID(in_ID) {};
@@ -84,7 +77,7 @@ public:
 
 extern unordered_map<string, id> ids;
 
-extern atomic<bool> ids_locked;
+extern mutex ids_lock;
 extern bool button_cleared;
 
 extern int configure_id(id& ID);

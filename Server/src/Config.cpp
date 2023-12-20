@@ -3,7 +3,7 @@
 #include "../include/GUI.h"
 
 bool button_cleared = false;
-atomic<bool> ids_locked;
+mutex ids_lock;
 
 unordered_map<string, id> ids = {};
 
@@ -41,6 +41,15 @@ void read_config(id& ID) {
 							if (page_store["buttons"].contains(to_string(k))) {
 								json& button_store = page_store["buttons"][to_string(k)];
 								if (button_store.contains("label")) button1.label = button_store["label"];
+								if (button_store.contains("display type")) {
+									try {
+										int type = std::stoi(button_store["display type"].get<string>());
+										if (type < static_cast<int>(button::display_types::END) && type > -1) {
+											button1.display_type = static_cast<button::display_types>(type);
+											if (type == 1) button1.generate_thumbnail = true;
+										}
+									} catch (...) {}
+								}
 								button1.label_backup = button1.label;
 								if (button_store.contains("has default label")) {
 									if (button_store["has default label"] == "1") button1.default_label = true;
@@ -49,10 +58,11 @@ void read_config(id& ID) {
 									else button1.default_label = false;
 								}
 								if (button_store.contains("type")) {
-									if (button_store["type"] == "0") button1.type = button::types::File;
-									else if (button_store["type"] == "1") button1.type = button::types::URL;
-									else if (button_store["type"] == "2") button1.type = button::types::Command;
-									else if (button_store["type"] == "3") button1.type = button::types::Directory;
+									try {
+										int type = std::stoi(button_store["type"].get<string>());
+										if (type < static_cast<int>(button::types::END) && type > -1) 
+											button1.type = static_cast<button::types>(type);
+									} catch (...) {}
 								}
 								if (button_store.contains("action")) button1.action = button_store["action"];
 							}
@@ -87,8 +97,8 @@ int configure_id(id& ID) {
 				ID.config = config;
 				read_config(ID);
 				reconfigure(ID);
-				if (!ID.nickname.empty())	LOGVAR("Configured", ID.nickname);
-				else						LOGVAR("Configured", ID.ID);
+				if (!ID.nickname.empty()) LOGVAR("Configured", ID.nickname);
+				else LOGVAR("Configured", ID.ID);
 				return 0;
 			} catch (...) {
 				LOG("invalid config!");
@@ -114,6 +124,7 @@ int configure_id(id& ID) {
 
 void reconfigure(id& ID) {
 	json config = ID.config;
+	// TODO: If type == 1 set label to "<image>" (profile/page/button.format) - the client will know what to do
 	if (config[config.begin().key()].contains("nickname"))	config[config.begin().key()].erase("nickname");
 	for (int i = 0; i < ID.profiles.size(); ++i) {
 		json& profile_store = config[config.begin().key()]["profiles"][to_string(i)];
@@ -127,17 +138,19 @@ void reconfigure(id& ID) {
 					for (int k = 0; k < ID.profiles[i].columns * ID.profiles[i].rows; ++k) {
 						if (page_store["buttons"].contains(to_string(k))) {
 							json& button_store = page_store["buttons"][to_string(k)];
-							if (button_store.contains("type"))  button_store.erase("type");
-							if (button_store.contains("action")) {
-								if (button_store["action"] == "") {} 
-								else button_store["action"] = "1";
-							}
+							if (button_store.contains("display type"))
+								if (button_store["display type"] == "1")
+									if (button_store.contains("label"))
+										button_store["label"] = "<image>";
+							if (button_store.contains("type")) button_store.erase("type");
+							if (button_store.contains("action"))
+								if (!button_store["action"].empty()) button_store["action"] = "1";
 						}
 					}
 				}
 			}
 		}
-		string configuration = "cfg" + ID.config.dump();
+		string configuration = "cfg" + config.dump();
 		ID.sock.iSendResult = send(ID.sock.ClientSocket, configuration.c_str(), configuration.length(), 0);
 	}
 }
@@ -153,6 +166,8 @@ void clear_button(int profile, int page, int button) {
 	nxsh_config += selected_id;
 	nxsh_config += ".json";
 	if (CURRENT_ID.config[selected_id]["profiles"][to_string(profile)]["pages"][to_string(page)]["buttons"].contains(to_string(button))) {
+		if (CURRENT_ID.profiles[profile].buttons[button].display_type == button::display_types::Image) 
+			SDL_DestroyTexture(CURRENT_ID.profiles[profile].buttons[button].thumbnail);
 		CURRENT_ID.config[selected_id]["profiles"][to_string(profile)]["pages"][to_string(page)]["buttons"].erase(to_string(button));
 		ofstream writer(nxsh_config);
 		writer << CURRENT_ID.config.dump(4);

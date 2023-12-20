@@ -115,17 +115,16 @@ void comm(string ID) {
 		comm_id.sock.iResult = recv(comm_id.sock.ClientSocket, buffer, 19, 0);
 		if (comm_id.sock.iResult > 0) {
 			string message(buffer);
-			while (comm_id.locked.load()) {}
-			comm_id.locked.exchange(true);
+			comm_id.lock.lock();
 			parse_message(message, comm_id);
-			comm_id.locked.exchange(false);
+			comm_id.lock.unlock();
 		}
 	} while (!done && !restart_socket && comm_id.sock.iSendResult > 0 && comm_id.sock.iResult > 0);
 	delete[] buffer;
 failed_alloc:
 	closesocket(comm_id.sock.ClientSocket);
-	while (ids_locked.load()) {}
-	ids_locked.exchange(true);
+	ids_lock.lock();
+	//comm_id.lock.lock();
 	if (selected_id == ID) {
 		clear_dialog_shown = false;
 		should_draw_button_properties = false;
@@ -133,8 +132,16 @@ failed_alloc:
 		button_properties_to_draw = -1;
 		selected_id = "";
 	}
+	LOG((comm_id.nickname + " disconnected.\n"));
+	for (int i = 0; i < comm_id.profiles.size(); ++i) {
+		for (int j = 0; j < comm_id.profiles[i].columns * comm_id.profiles[i].rows; ++j) {
+			if (comm_id.profiles[i].buttons[j].display_type == button::display_types::Image) {
+				if (comm_id.profiles[i].buttons[j].thumbnail) SDL_DestroyTexture(comm_id.profiles[i].buttons[j].thumbnail);
+			}
+		}
+	}
 	ids.erase(ID);
-	ids_locked.exchange(false);
+	ids_lock.unlock();
 }
 
 bool is_id(string message) {
@@ -154,7 +161,7 @@ void parse_message(string& message, id& ID) {
 	if (message.substr(0, 2) == SHORTCUT_PREFIX) {
 		string act_pos = message.substr(2, message.length());
 		int pos = std::stoi(act_pos);
-		pos--;
+		--pos;
 		if (!CURRENT_PROFILE_PAR.buttons[pos].action.empty()) {
 			string nospace_action = "\"";
 			nospace_action += CURRENT_PROFILE_PAR.buttons[pos].action;
@@ -167,8 +174,7 @@ void parse_message(string& message, id& ID) {
 				case button::types::Directory:
 					ShellExecute(NULL, L"explore", wstring_action.c_str(), NULL, NULL, SW_SHOW);
 					break;
-				default:
-					ShellExecute(NULL, L"open", wstring_action.c_str(), NULL, NULL, SW_SHOW);
+				default: ShellExecute(NULL, L"open", wstring_action.c_str(), NULL, NULL, SW_SHOW);
 			}
 		}
 		return;

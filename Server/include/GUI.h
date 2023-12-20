@@ -11,26 +11,47 @@
 #pragma comment(lib, "libcmt.lib")
 
 #pragma comment(lib, "../lib/SDL3/SDL3.lib")
+//#pragma comment(lib, "../lib/SDL3/SDL3_image.lib")
 #pragma comment(lib, "../lib/FreeType/freetype.lib")
 
-#include "../../imgui/imgui.h"
-#include "../../imgui/imgui_stdlib.h"
-#include "../../imgui/backends/imgui_impl_sdl3.h"
-#include "../../imgui/backends/imgui_impl_sdlrenderer3.h"
-#include "../../imgui/backends/SDL3/SDL.h"
+#include "../../external/imgui/imgui.h"
+#include "../../external/imgui/imgui_stdlib.h"
+#include "../../external/imgui/imgui_impl_sdl3.h"
+#include "../../external/imgui/imgui_impl_sdlrenderer3.h"
+//#include "../../external/SDL3/SDL_image.h"
+#include "../../external/SDL3/SDL.h"
 
-#include "../../NativeFileDIalogs-Extended/include/nfd.hpp"
-#include "../../traypp/include/tray.hpp"
+#include "../../external/NativeFileDIalogs-Extended/include/nfd.hpp"
+#include "../../external/traypp/include/tray.hpp"
 
-#include "../../Helvetica.h"
+#include "../../external/Helvetica.h"
 
 extern bool should_draw_id_properties;
 extern bool should_draw_button_properties;
 extern bool clear_dialog_shown;
+extern bool have_render;
 
 extern int button_properties_to_draw;
 
 extern std::string selected_id;
+
+class button {
+public:
+	string label = "";
+	string label_backup = label;
+	string action;
+	bool default_label = true;
+
+	enum class display_types { Text, Image, END };
+	display_types display_type = display_types::Text;
+
+	bool generate_thumbnail = false;
+	int thumbnail_width, thumbnail_height;
+	SDL_Texture* thumbnail = nullptr;
+
+	enum class types { File, URL, Command, Directory, END };
+	types type = types::File;
+};
 
 extern int gui_init();
 extern int tray_init();
@@ -38,8 +59,8 @@ extern int tray_init();
 extern void draw_main();
 extern void error_dialog(int type, std::string message);
 
-ImVec4*		set_colors();
-ImGuiStyle& set_style();
+extern ImVec4*		set_colors();
+extern ImGuiStyle& set_style();
 
 #ifdef _DEBUG
 extern void draw_performance();

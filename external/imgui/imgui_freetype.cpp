@@ -38,11 +38,11 @@
 #include "imgui_freetype.h"
 #include "imgui_internal.h"     // ImMin,ImMax,ImFontAtlasBuild*,
 #include <stdint.h>
-#include "freetype/config/public-macros.h"
-#include "freetype/freetype.h"
-#include "freetype/ftmodapi.h"
-#include "freetype/ftglyph.h"
-#include "freetype/ftsynth.h"
+#include "../FreeType/config/public-macros.h"
+#include "../FreeType/freetype.h"
+#include "../FreeType/ftmodapi.h"
+#include "../FreeType/ftglyph.h"
+#include "../FreeType/ftsynth.h"
 
 #ifdef IMGUI_ENABLE_FREETYPE_LUNASVG
 #include FT_OTSVG_H             // <freetype/otsvg.h>

@@ -2,14 +2,20 @@
 #include "../include/GUI.h"
 #include "../include/Config.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "../../external/stb_image.h"
+
 bool done		   				   = false;
 bool should_draw_button_properties = false;
 bool should_draw_id_properties     = false;
 bool should_draw_settings		   = false;
 bool set_to_null				   = true;
 bool clear_dialog_shown			   = false;
+bool have_render				   = false;
 
-int button_properties_to_draw;
+int button_properties_to_draw = -1;
+
+SDL_Renderer* renderer = nullptr;
 
 string selected_id = "";
 
@@ -25,7 +31,7 @@ int gui_init() {
 																 SDL_WINDOW_HIDDEN   );
 	if (window == nullptr) { error_dialog(0, "Failed to initialize window.\n"); exit(-1); }
 	SDL_SetWindowMinimumSize(window, 854, 480);
-	SDL_Renderer* renderer = SDL_CreateRenderer(window, NULL, SDL_RENDERER_PRESENTVSYNC);
+	renderer = SDL_CreateRenderer(window, NULL, SDL_RENDERER_PRESENTVSYNC);
 	if (renderer == nullptr) { error_dialog(0, "Failed to initialize renderer.\n"); exit(-1); }
 	SDL_ShowWindow(window);
 	// TODO: add silent startup -- no show window
@@ -45,7 +51,7 @@ int gui_init() {
 
 	ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
 	ImGui_ImplSDLRenderer3_Init(renderer);
-
+	have_render = true;
 	do {
 		ImGui_ImplSDL3_WaitForEvent();
 		SDL_Event event;
@@ -90,9 +96,9 @@ ImVec4* set_colors() {
 	ImVec4* colors = ImGui::GetStyle().Colors;
 	colors[ImGuiCol_Text]					= ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
 	colors[ImGuiCol_TextDisabled]			= ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
-	colors[ImGuiCol_WindowBg]				= ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
-	colors[ImGuiCol_ChildBg]				= ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
-	colors[ImGuiCol_PopupBg]				= ImVec4(0.00f, 0.00f, 0.00f, 0.35f);
+	colors[ImGuiCol_WindowBg]				= ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
+	colors[ImGuiCol_ChildBg]				= ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
+	colors[ImGuiCol_PopupBg]				= ImVec4(0.00f, 0.00f, 0.00f, 0.75f);
 	colors[ImGuiCol_FrameBg]				= ImVec4(0.05f, 0.05f, 0.05f, 0.54f);
 	colors[ImGuiCol_FrameBgHovered]			= ImVec4(0.19f, 0.19f, 0.19f, 0.54f);
 	colors[ImGuiCol_FrameBgActive]			= ImVec4(0.20f, 0.22f, 0.23f, 1.00f);
@@ -122,7 +128,7 @@ ImVec4* set_colors() {
 	colors[ImGuiCol_TabUnfocusedActive]		= ImVec4(0.14f, 0.14f, 0.14f, 1.00f);
 	colors[ImGuiCol_TextSelectedBg]			= ImVec4(0.20f, 0.22f, 0.23f, 1.00f);
 	colors[ImGuiCol_DragDropTarget]			= ImVec4(0.33f, 0.67f, 0.86f, 1.00f);
-	colors[ImGuiCol_ModalWindowDimBg]		= ImVec4(0.00f, 0.00f, 0.00f, 0.35f);
+	colors[ImGuiCol_ModalWindowDimBg]		= ImVec4(0.00f, 0.00f, 0.00f, 0.50f);
 
 	return colors;
 }
@@ -171,6 +177,38 @@ void clear_dialog() {
 	}
 }
 
+int LoadTextureFromFile(const char* filename, SDL_Texture** texture_ptr, int& width, int& height) {
+	int channels;	// TODO: implement keep default aspect ratio and padding
+	unsigned char* data = stbi_load(filename, &width, &height, &channels, 4);
+	if (data == nullptr) {
+		LOGVAR("Failed to load image", stbi_failure_reason());
+		error_dialog(1, ("Failed to load image.\n", stbi_failure_reason()));
+		return -1;
+	}
+	cerr << width * height * channels << '\n';
+
+	SDL_Surface* surface = SDL_CreateSurfaceFrom((void*)data, width, height, width * 4, SDL_PIXELFORMAT_RGBA32);
+
+	if (surface == nullptr) {
+		LOGVAR("Failed to create SDL surface", SDL_GetError());
+		error_dialog(0, (filename, "\nFailed to create SDL surface.\n"));
+		return -1;
+	}
+
+	*texture_ptr = SDL_CreateTextureFromSurface(renderer, surface);
+
+	if (*texture_ptr == nullptr) {
+		LOGVAR("Failed to create SDL texture", SDL_GetError());
+		error_dialog(0, (filename, "\nFailed to create SDL texture.\n"));
+		return -1;
+	}
+
+	SDL_DestroySurface(surface);
+	stbi_image_free(data);
+
+	return 0;
+}
+// URGENT: FREE ALL TEXTURES BEFORE QUITTING OR CLEARING MAP. DON'T USE exit(-1); IMPLEMENR EXIT FUNCTION
 string browse(int type) {
 	NFD_Init();
 	nfdchar_t* outPath = nullptr;
@@ -181,9 +219,15 @@ string browse(int type) {
 			result = NFD_OpenDialog(&outPath, filterItem, 1, NULL);
 			break;
 		}
-		case 1: 
+		case 1: {
+			nfdfilteritem_t filterItem[] = { {"Image files", "png,jpg,jpeg,ico,bmp" } };
+			result = NFD_OpenDialog(&outPath, filterItem, 1, NULL);
+			break;
+		}
+		case 2: {
 			result = NFD_PickFolder(&outPath, NULL);
 			break;
+		}
 	}
 	NFD_Quit();
 	if (result == NFD_OKAY) return outPath;
@@ -193,13 +237,16 @@ string browse(int type) {
 void draw_properties(int index) {
 	ImGui::OpenPopup("Button Properties");
 	static const char* types[] = { "File", "URL", "Command", "Directory" };
+	static const char* display_types[] = { "Text", "Image" };
 	static int original_type;
+	static int original_display_type;
 	static string original_action;
 	if (set_to_null || button_cleared) {
-		original_type	= CURRENT_BUTTON.type;
-		original_action = CURRENT_BUTTON.action;
-		button_cleared	= false;
-		set_to_null		= false;
+		original_type		  = static_cast<int>(CURRENT_BUTTON.type);
+		original_display_type = static_cast<int>(CURRENT_BUTTON.display_type);
+		original_action		  = CURRENT_BUTTON.action;
+		button_cleared		  = false;
+		set_to_null			  = false;
 	}
 	ImVec2 center = ImGui::GetMainViewport()->GetCenter();
 	ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
@@ -208,8 +255,30 @@ void draw_properties(int index) {
 		if (clear_dialog_shown) clear_dialog();
 		ImGui::SetWindowSize(ImVec2(450, 250));
 		ImGui::Text("Button ID: "); ImGui::SameLine(); ImGui::Text(to_string(index).c_str());
-		ImGui::Text("Label:"); ImGui::SameLine();
-		ImGui::InputText("##Label", &CURRENT_BUTTON.label);
+		ImGui::SeparatorText("Display");
+		ImGui::Text("Content:"); ImGui::SameLine();
+		if (ImGui::BeginCombo("##Display Type", display_types[original_display_type])) {
+			for (int i = 0; i < IM_ARRAYSIZE(display_types); ++i) {
+				const bool is_selected = (original_display_type == i);
+				if (ImGui::Selectable(display_types[i], is_selected)) original_display_type = i;
+				if (is_selected) ImGui::SetItemDefaultFocus();
+			}
+			ImGui::EndCombo();
+		}
+		switch (original_display_type) {
+			case static_cast<int>(button::display_types::Text): {
+				ImGui::Text("Label:"); ImGui::SameLine();
+				ImGui::InputText("##Label", &CURRENT_BUTTON.label);
+				break;
+			}
+			case static_cast<int>(button::display_types::Image): {
+				ImGui::Text("Path:"); ImGui::SameLine();
+				ImGui::InputText("##Path", &CURRENT_BUTTON.label); ImGui::SameLine();
+				if (ImGui::Button("Browse")) CURRENT_BUTTON.label = browse(1);
+				break;
+			}
+		}
+		ImGui::SeparatorText("Behavior");
 		ImGui::Text("Type:"); ImGui::SameLine();
 		if (ImGui::BeginCombo("##Type", types[original_type])) {
 			for (int i = 0; i < IM_ARRAYSIZE(types); ++i) {
@@ -220,14 +289,14 @@ void draw_properties(int index) {
 			ImGui::EndCombo();
 		}
 		switch (original_type) {
-			case button::types::File: {
+			case static_cast<int>(button::types::File): {
 				ImGui::Text("File:"); ImGui::SameLine();
 				ImGui::InputText("##Action", &original_action);
 				ImGui::SameLine();
 				if (ImGui::Button("Browse")) original_action = browse(0);
 				break;
 			}
-			case button::types::URL: {
+			case static_cast<int>(button::types::URL): {
 				ImGui::Text("URL:"); ImGui::SameLine();
 				ImGui::InputText("##Action", &original_action);
 				ImGui::SameLine(); ImGui::TextDisabled("(Not working?)");
@@ -237,43 +306,52 @@ void draw_properties(int index) {
 				}
 				break;
 			}
-			case button::types::Command: {
+			case static_cast<int>(button::types::Command): {
 				ImGui::Text("Command:"); ImGui::SameLine();
 				ImGui::InputText("##Action", &original_action);
 				break;
 			}
-			case button::types::Directory: {
+			case static_cast<int>(button::types::Directory): {
 				ImGui::Text("Directory:"); ImGui::SameLine();
 				ImGui::InputText("##Action", &original_action);
 				ImGui::SameLine();
-				if (ImGui::Button("Browse")) original_action = browse(1);
+				if (ImGui::Button("Browse")) original_action = browse(2);
 				break;
 			}
 		}
-		ImGui::BeginDisabled(original_action == "");
+		ImGui::BeginDisabled(original_action.empty() || ((CURRENT_BUTTON.display_type == button::display_types::Image && CURRENT_BUTTON.label.empty()) && original_action.empty()));
 		if (ImGui::Button("OK")) {
-			while (CURRENT_ID.locked.load()) {}
-			CURRENT_ID.locked.exchange(true);
+			CURRENT_ID.lock.lock();
 			if (CURRENT_BUTTON.label_backup != CURRENT_BUTTON.label) {
 				CURRENT_BUTTON.default_label = false;
 				CURRENT_BUTTON.label_backup = CURRENT_BUTTON.label;
 			}
-			CURRENT_BUTTON.type = static_cast<button::types>(original_type);
 			CURRENT_BUTTON.action = original_action;
+			CURRENT_BUTTON.type = static_cast<button::types>(original_type);
+			CURRENT_BUTTON.display_type = static_cast<button::display_types>(original_display_type);
+			if (static_cast<int>(CURRENT_BUTTON.display_type == button::display_types::Image)) {
+				if (CURRENT_BUTTON.thumbnail) SDL_DestroyTexture(CURRENT_BUTTON.thumbnail);
+				if (LoadTextureFromFile(CURRENT_BUTTON.label.c_str(), &CURRENT_BUTTON.thumbnail, CURRENT_BUTTON.thumbnail_width, CURRENT_BUTTON.thumbnail_height)) {
+					CURRENT_ID.lock.unlock();
+					goto failed; // Error is already displayed in callee. This keeps the popup open.
+				}
+			}
 			original_type = NULL;
 			original_action = "";
 			set_to_null = true;
 			should_draw_button_properties = false;
+			CURRENT_ID.config[selected_id]["profiles"][to_string(CURRENT_ID.current_profile)]["pages"][to_string(CURRENT_PROFILE.current_page)]["buttons"][to_string(button_properties_to_draw)]["display type"] = to_string(static_cast<int>(CURRENT_BUTTON.display_type));
 			CURRENT_ID.config[selected_id]["profiles"][to_string(CURRENT_ID.current_profile)]["pages"][to_string(CURRENT_PROFILE.current_page)]["buttons"][to_string(button_properties_to_draw)]["label"] = CURRENT_BUTTON.label;
 			CURRENT_ID.config[selected_id]["profiles"][to_string(CURRENT_ID.current_profile)]["pages"][to_string(CURRENT_PROFILE.current_page)]["buttons"][to_string(button_properties_to_draw)]["has default label"] = to_string(CURRENT_BUTTON.default_label);
 			CURRENT_ID.config[selected_id]["profiles"][to_string(CURRENT_ID.current_profile)]["pages"][to_string(CURRENT_PROFILE.current_page)]["buttons"][to_string(button_properties_to_draw)]["action"] = CURRENT_BUTTON.action;
-			CURRENT_ID.config[selected_id]["profiles"][to_string(CURRENT_ID.current_profile)]["pages"][to_string(CURRENT_PROFILE.current_page)]["buttons"][to_string(button_properties_to_draw)]["type"] = to_string(CURRENT_BUTTON.type);
+			CURRENT_ID.config[selected_id]["profiles"][to_string(CURRENT_ID.current_profile)]["pages"][to_string(CURRENT_PROFILE.current_page)]["buttons"][to_string(button_properties_to_draw)]["type"] = to_string(static_cast<int>(CURRENT_BUTTON.type));
 			write_config(CURRENT_ID);
 			reconfigure(CURRENT_ID);
-			CURRENT_ID.locked.exchange(false);
+			CURRENT_ID.lock.unlock();
 		}
+failed:
 		ImGui::EndDisabled();
-		ImGui::SameLine();
+		ImGui::SameLine();	// TODO: Move clear to the far right
 		if (ImGui::Button("Clear")) clear_dialog_shown = true;;
 		ImGui::SameLine();
 		if (ImGui::Button("Cancel")) {
@@ -292,9 +370,9 @@ void draw_button(string label, int index) {
 	if (selected_id != "") {
 		if (ImGui::Button(label.c_str(), ImVec2(x_size / CURRENT_PROFILE.columns,
 			io.DisplaySize.y / CURRENT_PROFILE.rows))) {
-			draw_properties(index - 1);
-			should_draw_button_properties = true;
 			button_properties_to_draw = index - 1;
+			should_draw_button_properties = true;
+			draw_properties(index - 1);
 		}
 	} else ImGui::Button(std::to_string(index).c_str(), ImVec2(x_size / 6, io.DisplaySize.y / 4));
 }
@@ -308,17 +386,34 @@ void draw_editor() {
 	ImGui::SetNextWindowPos(ImVec2(176.0f, 0.0f));
 	ImGui::Begin("editor", NULL, im_window_flags);
 	if (selected_id != "") {
-		while (CURRENT_ID.locked.load()) {}
-		CURRENT_ID.locked.exchange(true);
+		CURRENT_ID.lock.lock();
 		for (int i = 1; i <= CURRENT_PROFILE.columns * CURRENT_PROFILE.rows; ++i) {
 			if (!should_draw_id_properties) {
-				if (CURRENT_BUTTON_M1_LOOP.default_label) draw_button(to_string(i), i);
-				else if (CURRENT_BUTTON_M1_LOOP.label.empty()) draw_button("##", i);
-				else draw_button(CURRENT_BUTTON_M1_LOOP.label, i);
+				if (!static_cast<int>(CURRENT_BUTTON_M1_LOOP.display_type)) {
+					if (CURRENT_BUTTON_M1_LOOP.default_label) draw_button(to_string(i), i);
+					else if (CURRENT_BUTTON_M1_LOOP.label.empty()) draw_button("##", i);
+					else draw_button(CURRENT_BUTTON_M1_LOOP.label, i);
+				} else {
+					if (CURRENT_BUTTON_M1_LOOP.generate_thumbnail) {	
+						if (LoadTextureFromFile(CURRENT_BUTTON_M1_LOOP.label.c_str(), &CURRENT_BUTTON_M1_LOOP.thumbnail, CURRENT_BUTTON_M1_LOOP.thumbnail_width, CURRENT_BUTTON_M1_LOOP.thumbnail_height)) {
+							CURRENT_BUTTON_M1_LOOP.generate_thumbnail = false;
+							--i;
+							continue;
+						}	
+						CURRENT_BUTTON_M1_LOOP.generate_thumbnail = false;
+					}
+					if (ImGui::ImageButton((ImTextureID)(intptr_t)CURRENT_BUTTON_M1_LOOP.thumbnail, 
+											ImVec2(x_size / CURRENT_PROFILE.columns,
+													io.DisplaySize.y / CURRENT_PROFILE.rows))) {
+						button_properties_to_draw = i - 1;
+						should_draw_button_properties = true;
+						draw_properties(i - 1);
+					}
+				}
 			} else draw_button(to_string(i), i);
 			if (i % CURRENT_PROFILE.columns != 0) ImGui::SameLine();
 		}
-		CURRENT_ID.locked.exchange(false);
+		CURRENT_ID.lock.unlock();
 	} else {
 		ImGui::BeginDisabled();
 		for (int i = 1; i <= 24; ++i) {
@@ -369,8 +464,7 @@ void draw_id_properties() {
 			CURRENT_PROFILE.rows = rows;
 		}
 		if (ImGui::Button("Ok")) {
-			while (CURRENT_ID.locked.load()) {}
-			CURRENT_ID.locked.exchange(true);
+			CURRENT_ID.lock.lock();
 			CURRENT_ID.config[selected_id]["nickname"] = CURRENT_ID.nickname;
 			CURRENT_ID.config[selected_id]["profiles"][to_string(CURRENT_ID.current_profile)]["columns"] = to_string(CURRENT_PROFILE.columns);
 			CURRENT_ID.config[selected_id]["profiles"][to_string(CURRENT_ID.current_profile)]["rows"] = to_string(CURRENT_PROFILE.rows);
@@ -394,7 +488,7 @@ void draw_id_properties() {
 				CURRENT_PROFILE.buttons = swapper;
 			}
 			reconfigure(CURRENT_ID);
-			CURRENT_ID.locked.exchange(false);
+			CURRENT_ID.lock.unlock();
 			set_to_null = true;
 			should_draw_id_properties = false;
 		}
@@ -470,8 +564,7 @@ void draw_main() {
 	ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
 	ImGui::Begin("devices", NULL, im_window_flags);
 	ImGui::Text("Connected Devices:\n");
-	while (ids_locked.load()) {}
-	ids_locked.exchange(true);
+	ids_lock.lock();
 	if (!ids.empty()) {
 		if (should_draw_id_properties) draw_id_properties();
 		for (unordered_map<string, id>::iterator it = ids.begin(); it != ids.end(); ++it) {
@@ -497,7 +590,6 @@ void draw_main() {
 		selected_id = "";
 		ImGui::Text("None"); 
 	}
-	ids_locked.exchange(false);
 	ImGui::End();
 	ImGui::SetNextWindowSize(ImVec2(175, 32));
 	ImGui::SetNextWindowSizeConstraints(ImVec2(175, 33), ImVec2(175, 33));
@@ -506,6 +598,7 @@ void draw_main() {
 	if (ImGui::Button("Settings")) should_draw_settings = true;
 	ImGui::End();
 	draw_editor();
+	ids_lock.unlock();
 }
 
 void error_dialog(int type, string message) {
