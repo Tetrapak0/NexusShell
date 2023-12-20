@@ -3,7 +3,6 @@
 #include "../../imgui/imgui.h"
 #include "../../imgui/backends/imgui_impl_sdl3.h"
 #include "../../imgui/backends/imgui_impl_sdlrenderer3.h"
-
 #include "../../imgui/backends/SDL3/SDL.h"
 
 #if defined(IMGUI_IMPL_OPENGL_ES2)
@@ -14,30 +13,11 @@
 
 #include "../../Helvetica.h"
 
-#define SDL_ERROR(fail_point) {												\
-	string what_error(fail_point);											\
-	string message = "Failed to initialize ";								\
-	message += what_error;													\
-	message += SDL_GetError();												\
-	const SDL_MessageBoxButtonData button_data[] = {						\
-		{SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 0, "OK"}					\
-	};																		\
-	int buttonid;															\
-	const SDL_MessageBoxData msgbox_data = {								\
-		SDL_MESSAGEBOX_ERROR,												\
-		NULL,																\
-		"Error!",															\
-		message.c_str(),													\
-		SDL_arraysize(button_data),											\
-		button_data,														\
-		NULL																\
-	};																		\
-	SDL_ShowMessageBox(&msgbox_data, &buttonid);							\
-	done = true;															\
-	exit(-1);																\
-}
+#include <string>
 
-enum class screens { Home, Vol, Media, Spotify };
+extern bool disconnected_modal;
+
+enum class screens { Home,/*, Vol, Media, Spotify */};
 
 extern int gui_init();
 
@@ -51,7 +31,9 @@ extern void draw_killed();
 extern void draw_setup();
 extern void draw_disconnected_alert();
 
-screens get_default_screen();
+extern void error_dialog(int type, std::string message);
+
+extern screens get_default_screen();
 
 #ifdef _DEBUG
 void draw_performance();

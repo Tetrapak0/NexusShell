@@ -1,23 +1,25 @@
 #include "../include/Header.h"
 #include "../include/Config.h"
 #include "../include/Client.h"
+#include "../include/GUI.h"
 
 struct timeval timeout;
 
 bool failed             = true;
 bool connected          = false;
-bool disconnected_modal = false;
 bool kill               = false;
+bool have_ip            = false;
+bool have_port          = false;
 
 int sock;
 int bytesReceived;
 int send_result;
+int port = 27015;
+int prev_port = port;
 
 char ip_address[16];
 
 string kill_reason;
-
-json config;
 
 int client_init() {
     const string ID = rw_UUID();
@@ -28,36 +30,63 @@ int client_init() {
     timeout.tv_sec = 5;
     if ((setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout,  sizeof(timeout)) ||
          setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout,  sizeof(timeout))  == -1)) {
-        done = true; cerr << "setsockopt failed\n"; return 1;
+        LOG("setsockopt failed"); done = true; return 1;
     }
+    // TODO: multiple saved servers. select which one to connect to
+    have_ip = read_ipstore();
+    have_port = read_portstore();
 
     struct sockaddr_in hint;
     hint.sin_family = AF_INET;
-    hint.sin_port = htons(27015);
-    have_ip = rw_ipstore();
-    check_config(); // MAYBETODO: Multiple computers -- different configs
+    check_config();
     do {
         if (!failed) {
+            if (prev_port != port) {
+                write_ipstore();
+                write_portstore();
+                prev_port = port;
+                close(sock);
+            	LOG("------------REBOOTING SOCK------------");
+                return client_init();
+            }
+            hint.sin_port = htons(port);
+            VARLOG("port", port);
+            VARLOG("hint.sin_port", hint.sin_port);
+            VARLOG("IP address", ip_address);
             inet_pton(AF_INET, ip_address, &hint.sin_addr);
             int connectRes = connect(sock, (struct sockaddr*)&hint, sizeof(hint));
-            cerr << "connectRes: " << connectRes << "\n";
+            VARLOG("connectRes", connectRes);
             if (connectRes == -1) failed = true;
             else                  connected = true;
         }
         if (done) return 0;
     } while (!connected);
-    if (!have_ip) rw_ipstore();
-    // if previous MAYBETODO is implemented, add a check_config here with current connected ip as param
+
+    if (!have_ip) write_ipstore();
+    if (!have_port) write_portstore();
 
     timeout.tv_sec = 0;
     if ((setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout,  sizeof(timeout)) ||
          setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout,  sizeof(timeout))  == -1)) {
-        cerr << "setsockopt failed\n"; done = true; return 1;
+        LOG("setsockopt failed"); done = true; return 1;
     }
 
     disconnected_modal = false;
+
     string message;
-    char* buf = new char[1024 * 256];
+    char* buf = nullptr;
+    try {
+		buf = new char[1024 * 256];
+	} catch (std::bad_alloc) {
+		LOG("Failed to allocate buffer.");
+		error_dialog(1, "Failed to allocate buffer.\n");
+		exit(-1);
+	}
+	if (buf == nullptr) {
+		LOG("Failed to allocate buffer.");
+		error_dialog(1, "Failed to allocate buffer.\n");
+		exit(-1);
+	}
     send_result = send(sock, ID.c_str(), ID.length() + 1, 0);
     do {
         memset(buf, 0, 1024 * 256);
@@ -78,7 +107,7 @@ int client_init() {
     connected = false;
     if (!kill) disconnected_modal = true;
     failed = true;
-	cerr << "------------REBOOTING SOCK------------\n";
+	LOG("------------REBOOTING SOCK------------");
     if (!done) return client_init();
     return 0;
 }
