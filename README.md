@@ -1,5 +1,3 @@
-# ⚠ Development halted indefinitely. ⚠
-
 # NexusShell
 <p align="center">
   <img src="https://github.com/Tetrapak0/NexusShell/blob/main/icon.png?raw=true" alt="Icon"/>
