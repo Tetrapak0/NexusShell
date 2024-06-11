@@ -2193,7 +2193,7 @@ ImFont* ImFontAtlas::AddFontDefault(const ImFontConfig* font_cfg_template)
     font_cfg.GlyphOffset.y = 1.0f * IM_FLOOR(font_cfg.SizePixels / 13.0f);  // Add +1 offset per 13 units
 
     const char* ttf_compressed_base85 = GetDefaultCompressedFontDataTTFBase85();
-    const ImWchar* glyph_ranges = font_cfg.GlyphRanges != NULL ? font_cfg.GlyphRanges : GetGlyphRangesDefault();
+    const ImWchar* glyph_ranges = font_cfg.GlyphRanges != NULL ? font_cfg.GlyphRanges : GetGlyphRangesDefault(NULL);
     ImFont* font = AddFontFromMemoryCompressedBase85TTF(ttf_compressed_base85, font_cfg.SizePixels, &font_cfg, glyph_ranges);
     return font;
 }
@@ -2870,17 +2870,18 @@ void ImFontAtlasBuildFinish(ImFontAtlas* atlas)
 }
 
 // Retrieve list of range (2 int per range, values are inclusive)
-const ImWchar*   ImFontAtlas::GetGlyphRangesDefault()
+const ImWchar*   ImFontAtlas::GetGlyphRangesDefault(int* size)
 {
     static const ImWchar ranges[] =
     {
         0x0020, 0x00FF, // Basic Latin + Latin Supplement
         0,
     };
+    if (size) *size = IM_ARRAYSIZE(ranges) - 1; // Ignore NULL
     return &ranges[0];
 }
 
-const ImWchar*   ImFontAtlas::GetGlyphRangesGreek()
+const ImWchar*   ImFontAtlas::GetGlyphRangesGreek(int* size)
 {
     static const ImWchar ranges[] =
     {
@@ -2888,10 +2889,11 @@ const ImWchar*   ImFontAtlas::GetGlyphRangesGreek()
         0x0370, 0x03FF, // Greek and Coptic
         0,
     };
+    if (size) *size = IM_ARRAYSIZE(ranges) - 1; // Ignore NULL
     return &ranges[0];
 }
 
-const ImWchar*  ImFontAtlas::GetGlyphRangesKorean()
+const ImWchar*  ImFontAtlas::GetGlyphRangesKorean(int* size)
 {
     static const ImWchar ranges[] =
     {
@@ -2901,10 +2903,11 @@ const ImWchar*  ImFontAtlas::GetGlyphRangesKorean()
         0xFFFD, 0xFFFD, // Invalid
         0,
     };
+    if (size) *size = IM_ARRAYSIZE(ranges) - 1; // Ignore NULL
     return &ranges[0];
 }
 
-const ImWchar*  ImFontAtlas::GetGlyphRangesChineseFull()
+const ImWchar*  ImFontAtlas::GetGlyphRangesChineseFull(int* size)
 {
     static const ImWchar ranges[] =
     {
@@ -2917,6 +2920,7 @@ const ImWchar*  ImFontAtlas::GetGlyphRangesChineseFull()
         0x4e00, 0x9FAF, // CJK Ideograms
         0,
     };
+    if (size) *size = IM_ARRAYSIZE(ranges) - 1; // Ignore NULL
     return &ranges[0];
 }
 
@@ -2934,7 +2938,7 @@ static void UnpackAccumulativeOffsetsIntoRanges(int base_codepoint, const short*
 // [SECTION] ImFontAtlas glyph ranges helpers
 //-------------------------------------------------------------------------
 
-const ImWchar*  ImFontAtlas::GetGlyphRangesChineseSimplifiedCommon()
+const ImWchar*  ImFontAtlas::GetGlyphRangesChineseSimplifiedCommon(int* size)
 {
     // Store 2500 regularly used characters for Simplified Chinese.
     // Sourced from https://zh.wiktionary.org/wiki/%E9%99%84%E5%BD%95:%E7%8E%B0%E4%BB%A3%E6%B1%89%E8%AF%AD%E5%B8%B8%E7%94%A8%E5%AD%97%E8%A1%A8
@@ -2993,7 +2997,9 @@ const ImWchar*  ImFontAtlas::GetGlyphRangesChineseSimplifiedCommon()
         0xFF00, 0xFFEF, // Half-width characters
         0xFFFD, 0xFFFD  // Invalid
     };
-    static ImWchar full_ranges[IM_ARRAYSIZE(base_ranges) + IM_ARRAYSIZE(accumulative_offsets_from_0x4E00) * 2 + 1] = { 0 };
+    const int len = IM_ARRAYSIZE(base_ranges) + IM_ARRAYSIZE(accumulative_offsets_from_0x4E00) * 2 + 1;
+    if (size) *size = len;
+    static ImWchar full_ranges[len] = { 0 };
     if (!full_ranges[0])
     {
         memcpy(full_ranges, base_ranges, sizeof(base_ranges));
@@ -3002,7 +3008,7 @@ const ImWchar*  ImFontAtlas::GetGlyphRangesChineseSimplifiedCommon()
     return &full_ranges[0];
 }
 
-const ImWchar*  ImFontAtlas::GetGlyphRangesJapanese()
+const ImWchar*  ImFontAtlas::GetGlyphRangesJapanese(int* size)
 {
     // 2999 ideograms code points for Japanese
     // - 2136 Joyo (meaning "for regular use" or "for common use") Kanji code points
@@ -3083,7 +3089,9 @@ const ImWchar*  ImFontAtlas::GetGlyphRangesJapanese()
         0xFF00, 0xFFEF, // Half-width characters
         0xFFFD, 0xFFFD  // Invalid
     };
-    static ImWchar full_ranges[IM_ARRAYSIZE(base_ranges) + IM_ARRAYSIZE(accumulative_offsets_from_0x4E00)*2 + 1] = { 0 };
+    const int len = IM_ARRAYSIZE(base_ranges) + IM_ARRAYSIZE(accumulative_offsets_from_0x4E00)*2 + 1;
+    if (size) *size = len;
+    static ImWchar full_ranges[len] = { 0 };
     if (!full_ranges[0])
     {
         memcpy(full_ranges, base_ranges, sizeof(base_ranges));
@@ -3092,7 +3100,7 @@ const ImWchar*  ImFontAtlas::GetGlyphRangesJapanese()
     return &full_ranges[0];
 }
 
-const ImWchar*  ImFontAtlas::GetGlyphRangesCyrillic()
+const ImWchar*  ImFontAtlas::GetGlyphRangesCyrillic(int* size)
 {
     static const ImWchar ranges[] =
     {
@@ -3102,10 +3110,11 @@ const ImWchar*  ImFontAtlas::GetGlyphRangesCyrillic()
         0xA640, 0xA69F, // Cyrillic Extended-B
         0,
     };
+    if (size) *size = IM_ARRAYSIZE(ranges) - 1; // Ignore NULL
     return &ranges[0];
 }
 
-const ImWchar*  ImFontAtlas::GetGlyphRangesThai()
+const ImWchar*  ImFontAtlas::GetGlyphRangesThai(int* size)
 {
     static const ImWchar ranges[] =
     {
@@ -3114,10 +3123,11 @@ const ImWchar*  ImFontAtlas::GetGlyphRangesThai()
         0x0E00, 0x0E7F, // Thai
         0,
     };
+    if (size) *size = IM_ARRAYSIZE(ranges) - 1; // Ignore NULL
     return &ranges[0];
 }
 
-const ImWchar*  ImFontAtlas::GetGlyphRangesVietnamese()
+const ImWchar*  ImFontAtlas::GetGlyphRangesVietnamese(int* size)
 {
     static const ImWchar ranges[] =
     {
@@ -3131,6 +3141,7 @@ const ImWchar*  ImFontAtlas::GetGlyphRangesVietnamese()
         0x1EA0, 0x1EF9,
         0,
     };
+    if (size) *size = IM_ARRAYSIZE(ranges) - 1; // Ignore NULL
     return &ranges[0];
 }
 

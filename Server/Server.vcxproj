@@ -128,11 +128,12 @@
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
       <ShowProgress>NotSet</ShowProgress>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
+      <ImportLibrary>None</ImportLibrary>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -166,18 +167,6 @@
     <ClCompile Include="..\external\imgui\imgui_tables.cpp" />
     <ClCompile Include="..\external\imgui\imgui_widgets.cpp" />
     <ClCompile Include="..\external\NativeFileDIalogs-Extended\nfd_win.cpp" />
-    <ClCompile Include="..\external\traypp\src\components\button.cpp" />
-    <ClCompile Include="..\external\traypp\src\components\imagebutton.cpp" />
-    <ClCompile Include="..\external\traypp\src\components\label.cpp" />
-    <ClCompile Include="..\external\traypp\src\components\separator.cpp" />
-    <ClCompile Include="..\external\traypp\src\components\submenu.cpp" />
-    <ClCompile Include="..\external\traypp\src\components\syncedtoggle.cpp" />
-    <ClCompile Include="..\external\traypp\src\components\toggle.cpp" />
-    <ClCompile Include="..\external\traypp\src\core\entry.cpp" />
-    <ClCompile Include="..\external\traypp\src\core\traybase.cpp" />
-    <ClCompile Include="..\external\traypp\src\core\windows\icon.cpp" />
-    <ClCompile Include="..\external\traypp\src\core\windows\image.cpp" />
-    <ClCompile Include="..\external\traypp\src\core\windows\tray.cpp" />
     <ClCompile Include="src\Config.cpp" />
     <ClCompile Include="src\GUI.cpp" />
     <ClCompile Include="src\main.cpp" />
@@ -193,22 +182,10 @@
     <ClInclude Include="..\external\imgui\imgui_stdlib.h" />
     <ClInclude Include="..\external\NativeFileDIalogs-Extended\include\nfd.h" />
     <ClInclude Include="..\external\NativeFileDIalogs-Extended\include\nfd.hpp" />
-    <ClInclude Include="..\external\traypp\include\components\button.hpp" />
-    <ClInclude Include="..\external\traypp\include\components\imagebutton.hpp" />
-    <ClInclude Include="..\external\traypp\include\components\label.hpp" />
-    <ClInclude Include="..\external\traypp\include\components\separator.hpp" />
-    <ClInclude Include="..\external\traypp\include\components\submenu.hpp" />
-    <ClInclude Include="..\external\traypp\include\components\syncedtoggle.hpp" />
-    <ClInclude Include="..\external\traypp\include\components\toggle.hpp" />
-    <ClInclude Include="..\external\traypp\include\core\entry.hpp" />
-    <ClInclude Include="..\external\traypp\include\core\icon.hpp" />
-    <ClInclude Include="..\external\traypp\include\core\image.hpp" />
-    <ClInclude Include="..\external\traypp\include\core\traybase.hpp" />
-    <ClInclude Include="..\external\traypp\include\tray.hpp" />
-    <ClInclude Include="include\Config.h" />
-    <ClInclude Include="include\GUI.h" />
-    <ClInclude Include="include\Header.h" />
-    <ClInclude Include="include\Server.h" />
+    <ClInclude Include="include\Config.hpp" />
+    <ClInclude Include="include\GUI.hpp" />
+    <ClInclude Include="include\Header.hpp" />
+    <ClInclude Include="include\Server.hpp" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>

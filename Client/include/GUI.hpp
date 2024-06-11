@@ -1,27 +1,27 @@
 #pragma once
 
-#include "../../imgui/imgui.h"
-#include "../../imgui/backends/imgui_impl_sdl3.h"
-#include "../../imgui/backends/imgui_impl_sdlrenderer3.h"
-#include "../../imgui/backends/SDL3/SDL.h"
+#include "../../external/imgui/imgui.h"
+#include "../../external/imgui/imgui_impl_sdl3.h"
+#include "../../external/imgui/imgui_impl_sdlrenderer3.h"
+#include "../../external/SDL3/include/SDL.h"
 
 #if defined(IMGUI_IMPL_OPENGL_ES2)
-#include "../../imgui/backendsSDL3/SDL_opengles2.h"
+#include "../../external/SDL3/include/SDL_opengles2.h"
 #else
-#include "../../imgui/backends/SDL3/SDL_opengl.h"
+#include "../../external/SDL3/include/SDL_opengl.h"
 #endif
 
-#include "../../Helvetica.h"
+#include "../../external/Roboto/Roboto.h"
 
 #include <string>
 
 extern bool disconnected_modal;
 
-enum class screens { Home,/*, Vol, Media, Spotify */};
+enum class screens {Home,/*, Vol, Media, Spotify */};
 
 extern int gui_init();
 
-extern ImVec4*		set_colors();
+extern ImVec4*     set_colors();
 extern ImGuiStyle& set_style();
 
 extern void draw_main(screens current);

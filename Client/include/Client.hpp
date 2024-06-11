@@ -1,17 +1,16 @@
 #pragma once
 
 #define CURRENT_PROFILE profiles[current_profile]
-#define CURRENT_BUTTOM_M1_LOOP CURRENT_PROFILE.buttons[i-1]
+#define CURRENT_BUTTOM_LOOP CURRENT_PROFILE.buttons[i]
 
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
+#include "../../external/Tetrapak0/NexusSockets.h"
 
 #include <string>
 
 using std::string;
 
-extern int sock;
+extern socket_t sock;
+
 extern int send_result;
 extern int bytes_received;
 extern int port;
@@ -29,4 +28,4 @@ extern string kill_reason;
 
 extern int client_init();
 
-extern void comm();
+extern void client_communication();

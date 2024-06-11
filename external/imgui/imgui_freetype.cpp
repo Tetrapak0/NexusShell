@@ -38,11 +38,11 @@
 #include "imgui_freetype.h"
 #include "imgui_internal.h"     // ImMin,ImMax,ImFontAtlasBuild*,
 #include <stdint.h>
-#include "../FreeType/config/public-macros.h"
-#include "../FreeType/freetype.h"
-#include "../FreeType/ftmodapi.h"
-#include "../FreeType/ftglyph.h"
-#include "../FreeType/ftsynth.h"
+#include "../FreeType/include/config/public-macros.h"
+#include "../FreeType/include/freetype.h"
+#include "../FreeType/include/ftmodapi.h"
+#include "../FreeType/include/ftglyph.h"
+#include "../FreeType/include/ftsynth.h"
 
 #ifdef IMGUI_ENABLE_FREETYPE_LUNASVG
 #include FT_OTSVG_H             // <freetype/otsvg.h>
@@ -468,7 +468,7 @@ bool ImFontAtlasBuildWithFreeTypeEx(FT_Library ft_library, ImFontAtlas* atlas, u
         // Measure highest codepoints
         src_load_color |= (cfg.FontBuilderFlags & ImGuiFreeTypeBuilderFlags_LoadColor) != 0;
         ImFontBuildDstDataFT& dst_tmp = dst_tmp_array[src_tmp.DstIndex];
-        src_tmp.SrcRanges = cfg.GlyphRanges ? cfg.GlyphRanges : atlas->GetGlyphRangesDefault();
+        src_tmp.SrcRanges = cfg.GlyphRanges ? cfg.GlyphRanges : atlas->GetGlyphRangesDefault(NULL);
         for (const ImWchar* src_range = src_tmp.SrcRanges; src_range[0] && src_range[1]; src_range += 2)
         {
             // Check for valid range. This may also help detect *some* dangling pointers, because a common

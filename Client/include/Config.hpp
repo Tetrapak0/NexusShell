@@ -5,9 +5,9 @@
 #include <vector>
 #include <string>
 #include <random>
-#include <atomic>
+#include <mutex>
 
-#include "../../json.hpp"
+#include "../../external/jsonhpp/json.hpp"
 
 using std::string;
 using std::vector;
@@ -30,36 +30,38 @@ extern json config;
 
 extern atomic<bool> reconfiguring;
 
-extern char* homedir;
+extern string nxsh_dir;
 
-class button {
+class Button {
 public:
 	string label = "";
     bool default_label = true;
 	string action;
 };
 
-class profile {
+class Profile {
 public: 
-	int	   columns		   = 6;
-	int	   rows			   = 4;
-	int	   current_page    = 0;
-	vector<button> buttons;
+	int	columns = 6;
+	int	rows    = 4;
+    int size    = columns * rows;
+	int	current_page = 0;
+	vector<Button> buttons;
 };
 
-extern vector<profile> profiles;
+extern vector<Profile> profiles;
 
-extern const string id_gen();
-extern const string rw_UUID();
+extern const string UUID_gen();
+extern const string UUID_rw();
 
-extern bool read_ipstore();
-extern bool read_portstore();
-extern void write_ipstore();
-extern void write_portstore();
-extern void remove_ipstore();
-extern void remove_portstore();
+extern bool ipstore_read();
+extern void ipstore_write();
+extern void ipstore_remove();
 
-extern void check_config();
-extern void read_config();
-extern void remove_config();
-extern void write_config(string recvd_config);
+extern bool portstore_read();
+extern void portstore_write();
+extern void portstore_remove();
+
+extern void config_check();
+extern void config_read();
+extern void config_remove();
+extern void config_write(string recvd_config);

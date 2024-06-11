@@ -10,11 +10,6 @@
 #include <string>
 #include <vector>
 
-#include <unistd.h>
-#include <pwd.h>
-
-#include "../../json.hpp"
-
 using std::cout;
 using std::cin;
 using std::cerr;
@@ -26,3 +21,4 @@ using std::vector;
 using std::to_string;
 
 extern bool done;
+extern char* homedir;
